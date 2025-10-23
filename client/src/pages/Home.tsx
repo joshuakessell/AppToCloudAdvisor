@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Header } from "@/components/Header";
 import { DocumentUpload } from "@/components/DocumentUpload";
 import { ProcessingScreen } from "@/components/ProcessingScreen";
@@ -11,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { fadeIn, fadeInUp, slideInFromRight } from "@/lib/animations";
 
 type Step = "upload" | "processing" | "validating" | "clarifying" | "migration-plan" | "pathway" | "features" | "roadmap";
 
@@ -254,120 +256,192 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container mx-auto px-6 py-12 max-w-7xl">
-        {currentStep !== "upload" && currentStep !== "processing" && (
-          <Button
-            variant="ghost"
-            onClick={handleBack}
-            className="mb-6"
-            data-testid="button-back"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-        )}
+        <AnimatePresence mode="wait">
+          {currentStep !== "upload" && currentStep !== "processing" && (
+            <motion.div
+              key="back-button"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <Button
+                variant="ghost"
+                onClick={handleBack}
+                className="mb-6"
+                data-testid="button-back"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        {currentStep === "upload" && (
-          <div className="space-y-8">
-            <div className="text-center max-w-3xl mx-auto mb-12">
-              <h1 className="text-4xl font-bold mb-4">
-                AWS GameLift Migration Consultant
-              </h1>
-              <p className="text-xl text-muted-foreground">
-                Upload your game package or provide a GitHub repository URL and let AI guide you through 
-                migrating to AWS GameLift with personalized recommendations
-              </p>
-            </div>
-            <DocumentUpload 
-              onFileSelect={handleFileSelect}
-              onUrlSubmit={handleUrlSubmit}
-            />
-          </div>
-        )}
+        <AnimatePresence mode="wait">
+          {currentStep === "upload" && (
+            <motion.div
+              key="upload"
+              variants={fadeInUp}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="space-y-8"
+            >
+              <div className="text-center max-w-3xl mx-auto mb-12">
+                <h1 className="text-4xl font-bold mb-4">
+                  AWS GameLift Migration Consultant
+                </h1>
+                <p className="text-xl text-muted-foreground">
+                  Upload your game package or provide a GitHub repository URL and let AI guide you through 
+                  migrating to AWS GameLift with personalized recommendations
+                </p>
+              </div>
+              <DocumentUpload 
+                onFileSelect={handleFileSelect}
+                onUrlSubmit={handleUrlSubmit}
+              />
+            </motion.div>
+          )}
 
-        {currentStep === "processing" && (
-          <ProcessingScreen
-            steps={processingSteps}
-            onComplete={() => {}}
-          />
-        )}
+          {currentStep === "processing" && (
+            <motion.div
+              key="processing"
+              variants={fadeIn}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+            >
+              <ProcessingScreen
+                steps={processingSteps}
+                onComplete={() => {}}
+              />
+            </motion.div>
+          )}
 
-        {currentStep === "validating" && (
-          <ValidationScreen
-            isAnalyzing={false}
-            isValid={validationResult?.isValid || false}
-            documentName={documentName}
-            issues={validationResult?.issues || []}
-            onRetry={handleRetryValidation}
-            onContinue={handleProceedToClarifying}
-          />
-        )}
+          {currentStep === "validating" && (
+            <motion.div
+              key="validating"
+              variants={slideInFromRight}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+            >
+              <ValidationScreen
+                isAnalyzing={false}
+                isValid={validationResult?.isValid || false}
+                documentName={documentName}
+                issues={validationResult?.issues || []}
+                onRetry={handleRetryValidation}
+                onContinue={handleProceedToClarifying}
+              />
+            </motion.div>
+          )}
 
-        {currentStep === "clarifying" && gameId && (
-          <ClarifyingQuestions
-            gameId={gameId}
-            gameName={gameName}
-            onComplete={handleClarifyingComplete}
-            comprehensiveAnalysis={comprehensiveAnalysis}
-          />
-        )}
+          {currentStep === "clarifying" && gameId && (
+            <motion.div
+              key="clarifying"
+              variants={slideInFromRight}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+            >
+              <ClarifyingQuestions
+                gameId={gameId}
+                gameName={gameName}
+                onComplete={handleClarifyingComplete}
+                comprehensiveAnalysis={comprehensiveAnalysis}
+              />
+            </motion.div>
+          )}
 
-        {currentStep === "migration-plan" && (
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="text-center">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
-              <h3 className="text-xl font-semibold">Generating Your Migration Plan...</h3>
-              <p className="text-muted-foreground mt-2">
-                Analyzing your responses and creating personalized AWS GameLift recommendations
-              </p>
-            </div>
-          </div>
-        )}
+          {currentStep === "migration-plan" && (
+            <motion.div
+              key="migration-plan"
+              variants={fadeIn}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="flex items-center justify-center min-h-[400px]"
+            >
+              <div className="text-center">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+                <h3 className="text-xl font-semibold">Generating Your Migration Plan...</h3>
+                <p className="text-muted-foreground mt-2">
+                  Analyzing your responses and creating personalized AWS GameLift recommendations
+                </p>
+              </div>
+            </motion.div>
+          )}
 
-        {currentStep === "pathway" && migrationPlan && (
-          <div className="space-y-6">
-            <MigrationPathwayVisualization migrationPlan={migrationPlan} />
-            
-            <div className="flex justify-between items-center pt-6 border-t">
-              {featureSuggestions && (
+          {currentStep === "pathway" && migrationPlan && (
+            <motion.div
+              key="pathway"
+              variants={slideInFromRight}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="space-y-6"
+            >
+              <MigrationPathwayVisualization migrationPlan={migrationPlan} />
+              
+              <div className="flex justify-between items-center pt-6 border-t">
+                {featureSuggestions && (
+                  <Button
+                    onClick={handleViewFeatures}
+                    variant="outline"
+                    data-testid="button-view-features"
+                  >
+                    View Feature Suggestions
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                )}
                 <Button
-                  onClick={handleViewFeatures}
-                  variant="outline"
-                  data-testid="button-view-features"
+                  onClick={handleViewRoadmap}
+                  data-testid="button-view-roadmap"
                 >
-                  View Feature Suggestions
+                  View Migration Roadmap
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
-              )}
-              <Button
-                onClick={handleViewRoadmap}
-                data-testid="button-view-roadmap"
-              >
-                View Migration Roadmap
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        )}
+              </div>
+            </motion.div>
+          )}
 
-        {currentStep === "features" && featureSuggestions && (
-          <div className="space-y-6">
-            <FeatureSuggestionsDisplay suggestions={featureSuggestions} />
-            
-            <div className="flex justify-end pt-6 border-t">
-              <Button
-                onClick={handleViewRoadmap}
-                data-testid="button-view-roadmap-from-features"
-              >
-                View Migration Roadmap
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        )}
+          {currentStep === "features" && featureSuggestions && (
+            <motion.div
+              key="features"
+              variants={slideInFromRight}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="space-y-6"
+            >
+              <FeatureSuggestionsDisplay suggestions={featureSuggestions} />
+              
+              <div className="flex justify-end pt-6 border-t">
+                <Button
+                  onClick={handleViewRoadmap}
+                  data-testid="button-view-roadmap-from-features"
+                >
+                  View Migration Roadmap
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </motion.div>
+          )}
 
-        {currentStep === "roadmap" && migrationPlan && (
-          <MigrationGuideRoadmap migrationPlan={migrationPlan} />
-        )}
+          {currentStep === "roadmap" && migrationPlan && (
+            <motion.div
+              key="roadmap"
+              variants={slideInFromRight}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+            >
+              <MigrationGuideRoadmap migrationPlan={migrationPlan} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );
