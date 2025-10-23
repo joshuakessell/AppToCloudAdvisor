@@ -91,6 +91,11 @@ export default function Home() {
     setTimeout(() => setCurrentStep("analysis"), 1500);
   };
 
+  const handleUrlSubmit = (url: string) => {
+    console.log("URL submitted:", url);
+    setTimeout(() => setCurrentStep("analysis"), 1500);
+  };
+
   const handleBack = () => {
     const steps: Step[] = ["upload", "analysis", "configure", "playbook", "deploy", "validate"];
     const currentIndex = steps.indexOf(currentStep);
