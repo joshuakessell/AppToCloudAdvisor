@@ -6,116 +6,41 @@ import { DynamicQuestionnaire } from "@/components/DynamicQuestionnaire";
 import { PlaybookViewer } from "@/components/PlaybookViewer";
 import { DeploymentDashboard } from "@/components/DeploymentDashboard";
 import { ValidationResults } from "@/components/ValidationResults";
-import { AnalysisResults } from "@/components/AnalysisResults";
-import { ConfigurationForm } from "@/components/ConfigurationForm";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
-type Step = "upload" | "analysis" | "configure" | "validating" | "questionnaire" | "playbook" | "deploy" | "validate";
+type Step = "upload" | "validating" | "questionnaire" | "playbook" | "deploy" | "validate";
+
+interface ValidationResult {
+  isValid: boolean;
+  issues: Array<{
+    severity: "error" | "warning";
+    message: string;
+  }>;
+}
+
+interface Question {
+  id: string;
+  type: "text" | "select" | "radio" | "checkbox" | "textarea" | "number" | "provider";
+  label: string;
+  description?: string;
+  required: boolean;
+  options?: string[];
+  placeholder?: string;
+}
 
 export default function Home() {
   const [currentStep, setCurrentStep] = useState<Step>("upload");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [documentName, setDocumentName] = useState("");
-  const [isValidDoc, setIsValidDoc] = useState(true);
-
-  const mockPlaybook = `---
-- name: Deploy Application to Cloud
-  hosts: all
-  become: yes
-  
-  vars:
-    app_name: "my-application"
-    app_port: 3000
-    
-  tasks:
-    - name: Update apt cache
-      apt:
-        update_cache: yes
-        
-    - name: Install Node.js
-      apt:
-        name: nodejs
-        state: present`;
-
-  const mockValidationIssues = [
-    {
-      severity: "error" as const,
-      message: "Document does not contain installation steps or commands. The documentation appears to be a feature overview rather than an installation guide."
-    },
-    {
-      severity: "error" as const,
-      message: "No system requirements specified. Unable to determine minimum hardware, operating system, or software prerequisites."
-    },
-    {
-      severity: "warning" as const,
-      message: "Configuration details are vague or incomplete. Some optional parameters may not be available in the generated playbook."
-    }
-  ];
-
-  const mockDynamicQuestions = [
-    {
-      id: "cloud_provider",
-      type: "provider" as const,
-      label: "Select Cloud Provider",
-      description: "Choose your preferred cloud infrastructure platform, or select 'Cloud Agnostic' to generate a playbook that works across providers",
-      required: true
-    },
-    {
-      id: "deployment_region",
-      type: "select" as const,
-      label: "Deployment Region",
-      description: "Select the geographic region for your deployment",
-      required: true,
-      options: ["us-east-1 (N. Virginia)", "us-west-2 (Oregon)", "eu-west-1 (Ireland)", "ap-southeast-1 (Singapore)"]
-    },
-    {
-      id: "instance_count",
-      type: "number" as const,
-      label: "Number of Instances",
-      description: "How many instances should be provisioned initially?",
-      required: true,
-      placeholder: "e.g., 2"
-    },
-    {
-      id: "auto_scaling",
-      type: "radio" as const,
-      label: "Enable Auto-Scaling",
-      description: "Should the infrastructure automatically scale based on demand?",
-      required: true,
-      options: ["Yes, enable auto-scaling", "No, use fixed capacity"]
-    },
-    {
-      id: "database_config",
-      type: "select" as const,
-      label: "Database Configuration",
-      description: "Based on the documentation, PostgreSQL 14 is required. How should it be provisioned?",
-      required: true,
-      options: ["Managed database service (RDS/Cloud SQL)", "Self-hosted on VM", "Existing database (provide connection details later)"]
-    },
-    {
-      id: "features",
-      type: "checkbox" as const,
-      label: "Optional Features",
-      description: "Select additional features to include in your deployment",
-      required: false,
-      options: [
-        "SSL/TLS Certificate (via Let's Encrypt)",
-        "Database Backup Automation",
-        "Monitoring & Alerts",
-        "Log Aggregation",
-        "Redis Cache Layer"
-      ]
-    },
-    {
-      id: "custom_config",
-      type: "textarea" as const,
-      label: "Custom Configuration",
-      description: "Any additional configuration parameters or environment variables",
-      required: false,
-      placeholder: "Enter any custom configuration parameters..."
-    }
-  ];
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [generatedPlaybook, setGeneratedPlaybook] = useState("");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const { toast } = useToast();
 
   const mockValidationChecks = [
     {
@@ -150,26 +75,115 @@ export default function Home() {
     }
   ];
 
-  const handleFileSelect = (file: File) => {
-    setSelectedFile(file);
-    setDocumentName(file.name);
-    setCurrentStep("validating");
-    
-    setTimeout(() => {
-      const random = Math.random();
-      setIsValidDoc(random > 0.3);
-    }, 2000);
+  const handleFileSelect = async (file: File) => {
+    try {
+      setSelectedFile(file);
+      setDocumentName(file.name);
+      setCurrentStep("validating");
+      setIsAnalyzing(true);
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("name", file.name);
+
+      const project = await apiRequest("POST", "/api/projects/upload", formData);
+      setProjectId(project.id);
+
+      const validation = await apiRequest("POST", `/api/projects/${project.id}/validate`);
+      setValidationResult(validation);
+      setIsAnalyzing(false);
+
+      if (validation.isValid) {
+        setTimeout(() => {
+          handleGenerateQuestionnaire(project.id);
+        }, 1000);
+      }
+    } catch (error: any) {
+      console.error("File upload error:", error);
+      toast({
+        title: "Upload Failed",
+        description: error.message || "Failed to upload document",
+        variant: "destructive",
+      });
+      setIsAnalyzing(false);
+    }
   };
 
-  const handleUrlSubmit = (url: string) => {
-    console.log("URL submitted:", url);
-    setDocumentName(url);
-    setCurrentStep("validating");
-    
-    setTimeout(() => {
-      const random = Math.random();
-      setIsValidDoc(random > 0.3);
-    }, 2000);
+  const handleUrlSubmit = async (url: string) => {
+    try {
+      setDocumentName(url);
+      setCurrentStep("validating");
+      setIsAnalyzing(true);
+
+      const project = await apiRequest("POST", "/api/projects/url", {
+        url,
+        name: url,
+      });
+      setProjectId(project.id);
+
+      const validation = await apiRequest("POST", `/api/projects/${project.id}/validate`);
+      setValidationResult(validation);
+      setIsAnalyzing(false);
+
+      if (validation.isValid) {
+        setTimeout(() => {
+          handleGenerateQuestionnaire(project.id);
+        }, 1000);
+      }
+    } catch (error: any) {
+      console.error("URL submission error:", error);
+      toast({
+        title: "Analysis Failed",
+        description: error.message || "Failed to fetch and analyze documentation",
+        variant: "destructive",
+      });
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleGenerateQuestionnaire = async (id: string) => {
+    try {
+      const generatedQuestions = await apiRequest("POST", `/api/projects/${id}/questionnaire`);
+      setQuestions(generatedQuestions);
+      setCurrentStep("questionnaire");
+    } catch (error: any) {
+      console.error("Questionnaire generation error:", error);
+      toast({
+        title: "Questionnaire Generation Failed",
+        description: error.message || "Failed to generate configuration questions",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleQuestionnaireSubmit = async (answers: Record<string, any>) => {
+    try {
+      if (!projectId) return;
+
+      toast({
+        title: "Generating Playbook",
+        description: "Creating your customized Ansible playbook...",
+      });
+
+      const result = await apiRequest("POST", `/api/projects/${projectId}/playbook`, {
+        answers,
+      });
+
+      setGeneratedPlaybook(result.playbook);
+      setCurrentStep("playbook");
+
+      toast({
+        title: "Playbook Generated",
+        description: "Your Ansible playbook is ready for download and deployment",
+      });
+    } catch (error: any) {
+      console.error("Playbook generation error:", error);
+      toast({
+        title: "Playbook Generation Failed",
+        description: error.message || "Failed to generate playbook",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleBack = () => {
@@ -182,7 +196,8 @@ export default function Home() {
 
   const handleRetryValidation = () => {
     setCurrentStep("upload");
-    setIsValidDoc(true);
+    setValidationResult(null);
+    setProjectId(null);
   };
 
   return (
@@ -221,28 +236,25 @@ export default function Home() {
 
         {currentStep === "validating" && (
           <ValidationScreen
-            isAnalyzing={isValidDoc === true && currentStep === "validating"}
-            isValid={isValidDoc}
+            isAnalyzing={isAnalyzing}
+            isValid={validationResult?.isValid || false}
             documentName={documentName}
-            issues={isValidDoc ? [] : mockValidationIssues}
+            issues={validationResult?.issues || []}
             onRetry={handleRetryValidation}
-            onContinue={() => setCurrentStep("questionnaire")}
+            onContinue={() => projectId && handleGenerateQuestionnaire(projectId)}
           />
         )}
 
-        {currentStep === "questionnaire" && (
+        {currentStep === "questionnaire" && questions.length > 0 && (
           <DynamicQuestionnaire
-            questions={mockDynamicQuestions}
-            onSubmit={(answers) => {
-              console.log("Questionnaire answers:", answers);
-              setCurrentStep("playbook");
-            }}
+            questions={questions}
+            onSubmit={handleQuestionnaireSubmit}
           />
         )}
 
         {currentStep === "playbook" && (
           <PlaybookViewer
-            playbook={mockPlaybook}
+            playbook={generatedPlaybook}
             onDeploy={() => setCurrentStep("deploy")}
           />
         )}

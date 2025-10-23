@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 export interface IStorage {
   getProject(id: string): Promise<Project | undefined>;
   createProject(project: InsertProject): Promise<Project>;
+  updateProject(id: string, updates: Partial<InsertProject>): Promise<Project | undefined>;
   listProjects(): Promise<Project[]>;
 }
 
@@ -31,6 +32,21 @@ export class MemStorage implements IStorage {
     };
     this.projects.set(id, project);
     return project;
+  }
+
+  async updateProject(id: string, updates: Partial<InsertProject>): Promise<Project | undefined> {
+    const project = this.projects.get(id);
+    if (!project) return undefined;
+
+    const updated: Project = {
+      ...project,
+      ...updates,
+      id: project.id,
+      createdAt: project.createdAt,
+    };
+    
+    this.projects.set(id, updated);
+    return updated;
   }
 
   async listProjects(): Promise<Project[]> {
