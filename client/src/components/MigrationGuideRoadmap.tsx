@@ -1,8 +1,9 @@
+import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle2, Code, Server, TestTube, Rocket, Clock, BookOpen } from "lucide-react";
 import { fadeInUp, tabContent, cardEntrance } from "@/lib/animations";
 
@@ -49,18 +50,24 @@ const phaseIcons: Record<string, any> = {
 };
 
 export function MigrationGuideRoadmap({ migrationPlan }: MigrationGuideRoadmapProps) {
+  const [activeTab, setActiveTab] = React.useState("roadmap");
+
   return (
     <div className="space-y-6">
-      <div>
+      <motion.div
+        variants={fadeInUp}
+        initial="hidden"
+        animate="visible"
+      >
         <h2 className="text-2xl font-bold mb-2" data-testid="text-migration-guide-title">
           Step-by-Step Migration Guide
         </h2>
         <p className="text-muted-foreground">
           Complete roadmap for migrating your game to AWS GameLift
         </p>
-      </div>
+      </motion.div>
 
-      <Tabs defaultValue="roadmap" className="space-y-4">
+      <Tabs defaultValue="roadmap" className="space-y-4" onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="roadmap" data-testid="tab-roadmap">
             <Rocket className="h-4 w-4 mr-2" />
@@ -72,9 +79,18 @@ export function MigrationGuideRoadmap({ migrationPlan }: MigrationGuideRoadmapPr
           </TabsTrigger>
         </TabsList>
 
-        {/* Migration Roadmap Tab */}
-        <TabsContent value="roadmap" className="space-y-4">
-          <Accordion type="single" collapsible defaultValue="step-0">
+        <AnimatePresence mode="wait">
+          {/* Migration Roadmap Tab */}
+          {activeTab === "roadmap" && (
+            <motion.div
+              key="roadmap"
+              variants={tabContent}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="space-y-4"
+            >
+              <Accordion type="single" collapsible defaultValue="step-0">
             {migrationPlan.migrationSteps.map((step, idx) => {
               const PhaseIcon = phaseIcons[step.phase.toLowerCase()] || CheckCircle2;
               
@@ -124,11 +140,20 @@ export function MigrationGuideRoadmap({ migrationPlan }: MigrationGuideRoadmapPr
                 </AccordionItem>
               );
             })}
-          </Accordion>
-        </TabsContent>
+              </Accordion>
+            </motion.div>
+          )}
 
-        {/* SDK Integration Tab */}
-        <TabsContent value="sdk" className="space-y-4">
+          {/* SDK Integration Tab */}
+          {activeTab === "sdk" && (
+            <motion.div
+              key="sdk"
+              variants={tabContent}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="space-y-4"
+            >
           {/* Server SDK Integration */}
           <Card>
             <CardHeader>
@@ -249,10 +274,13 @@ export function MigrationGuideRoadmap({ migrationPlan }: MigrationGuideRoadmapPr
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </Tabs>
 
       {/* Summary Card */}
+      <motion.div variants={cardEntrance} initial="hidden" animate="visible">
       <Card className="border-primary/50 bg-primary/5">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -280,6 +308,7 @@ export function MigrationGuideRoadmap({ migrationPlan }: MigrationGuideRoadmapPr
           </div>
         </CardContent>
       </Card>
+      </motion.div>
     </div>
   );
 }
