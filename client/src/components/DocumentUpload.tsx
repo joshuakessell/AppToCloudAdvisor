@@ -94,7 +94,7 @@ export function DocumentUpload({ onFileSelect, onUrlSubmit }: DocumentUploadProp
               id="file-upload"
               className="sr-only"
               onChange={handleFileChange}
-              accept=".pdf,.md,.txt,.doc,.docx"
+              accept=".zip"
               data-testid="input-file"
             />
             
@@ -104,9 +104,9 @@ export function DocumentUpload({ onFileSelect, onUrlSubmit }: DocumentUploadProp
                 className="flex flex-col items-center justify-center cursor-pointer"
               >
                 <Upload className="h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-lg font-medium mb-2">Upload Installation Guide</p>
+                <p className="text-lg font-medium mb-2">Upload Game Package</p>
                 <p className="text-sm text-muted-foreground mb-4 text-center">
-                  Drag and drop your installation guide here, or click to browse
+                  Drag and drop your game package (ZIP) here, or click to browse
                 </p>
                 <Button variant="outline" data-testid="button-browse">
                   Browse Files
@@ -136,9 +136,9 @@ export function DocumentUpload({ onFileSelect, onUrlSubmit }: DocumentUploadProp
           </div>
           
           <div className="mt-6">
-            <p className="text-sm text-muted-foreground mb-2">Supported formats:</p>
+            <p className="text-sm text-muted-foreground mb-2">Requirements:</p>
             <div className="flex flex-wrap gap-2">
-              {["PDF", "Markdown", "Text", "Word"].map((format) => (
+              {["ZIP Archive", "game.md or README.md Required", "Max 50MB"].map((format) => (
                 <span
                   key={format}
                   className="px-3 py-1 bg-muted rounded-full text-xs font-mono"
@@ -156,18 +156,18 @@ export function DocumentUpload({ onFileSelect, onUrlSubmit }: DocumentUploadProp
               <Card className="p-8">
                 <div className="flex flex-col items-center justify-center text-center mb-6">
                   <LinkIcon className="h-12 w-12 text-muted-foreground mb-4" />
-                  <p className="text-lg font-medium mb-2">Web Documentation URL</p>
+                  <p className="text-lg font-medium mb-2">GitHub Repository URL</p>
                   <p className="text-sm text-muted-foreground">
-                    Provide a link to online installation documentation
+                    Provide a link to your game's GitHub repository with game.md
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="doc-url">Documentation URL</Label>
+                  <Label htmlFor="doc-url">GitHub Repository URL</Label>
                   <Input
                     id="doc-url"
                     type="url"
-                    placeholder="https://example.com/installation-guide"
+                    placeholder="https://github.com/username/my-game"
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
                     data-testid="input-url"
@@ -181,14 +181,14 @@ export function DocumentUpload({ onFileSelect, onUrlSubmit }: DocumentUploadProp
                   disabled={!url.trim()}
                   data-testid="button-submit-url"
                 >
-                  Analyze Documentation
+                  Analyze Game Package
                 </Button>
               </Card>
 
               <div className="mt-6">
-                <p className="text-sm text-muted-foreground mb-2">Example sources:</p>
+                <p className="text-sm text-muted-foreground mb-2">Requirements:</p>
                 <div className="flex flex-wrap gap-2">
-                  {["GitHub README", "ReadTheDocs", "Official Docs", "Medium Articles"].map((source) => (
+                  {["Public GitHub Repository", "game.md or README.md", "Source Code Included"].map((source) => (
                     <span
                       key={source}
                       className="px-3 py-1 bg-muted rounded-full text-xs font-mono"
@@ -205,7 +205,7 @@ export function DocumentUpload({ onFileSelect, onUrlSubmit }: DocumentUploadProp
                 <div className="flex items-center gap-4">
                   <LinkIcon className="h-10 w-10 text-primary" />
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium mb-1">Documentation URL</p>
+                    <p className="font-medium mb-1">GitHub Repository</p>
                     <p className="text-sm text-muted-foreground font-mono truncate" data-testid="text-submitted-url">
                       {submittedUrl}
                     </p>

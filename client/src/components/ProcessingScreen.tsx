@@ -72,7 +72,7 @@ export function ProcessingScreen({ steps, onComplete }: ProcessingScreenProps) {
             <Loader2 className="h-12 w-12 animate-spin text-primary" data-testid="icon-scanning" />
             
             <div className="w-full max-w-xl space-y-4">
-              <h3 className="text-lg font-semibold mb-4">Processing Documentation</h3>
+              <h3 className="text-lg font-semibold mb-4">Analyzing Game Package</h3>
               
               <div className="space-y-3 text-left">
                 {visibleSteps.map((step, index) => (
