@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Header } from "@/components/Header";
 import { DocumentUpload } from "@/components/DocumentUpload";
+import { ProcessingScreen } from "@/components/ProcessingScreen";
 import { ValidationScreen } from "@/components/ValidationScreen";
+import { ConfigurationScreen } from "@/components/ConfigurationScreen";
 import { DynamicQuestionnaire } from "@/components/DynamicQuestionnaire";
 import { PlaybookViewer } from "@/components/PlaybookViewer";
 import { DeploymentDashboard } from "@/components/DeploymentDashboard";
@@ -11,7 +13,7 @@ import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
-type Step = "upload" | "validating" | "questionnaire" | "playbook" | "deploy" | "validate";
+type Step = "upload" | "processing" | "validating" | "configuration" | "questionnaire" | "playbook" | "deploy" | "validate";
 
 interface ValidationResult {
   isValid: boolean;
@@ -29,6 +31,14 @@ interface Question {
   required: boolean;
   options?: string[];
   placeholder?: string;
+  helpText?: string;
+  examples?: string[];
+}
+
+interface ProcessingStep {
+  id: string;
+  message: string;
+  status: "pending" | "processing" | "complete";
 }
 
 export default function Home() {
@@ -40,6 +50,7 @@ export default function Home() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [generatedPlaybook, setGeneratedPlaybook] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [processingSteps, setProcessingSteps] = useState<ProcessingStep[]>([]);
   const { toast } = useToast();
 
   const mockValidationChecks = [
@@ -79,8 +90,15 @@ export default function Home() {
     try {
       setSelectedFile(file);
       setDocumentName(file.name);
-      setCurrentStep("validating");
-      setIsAnalyzing(true);
+      setCurrentStep("processing");
+
+      const steps: ProcessingStep[] = [
+        { id: "upload", message: "Uploading document and extracting content...", status: "processing" },
+        { id: "ai", message: "Sending information to AI for analysis...", status: "pending" },
+        { id: "validate", message: "Processing deployment guide and validating requirements...", status: "pending" },
+        { id: "extract", message: "Extracting configuration options...", status: "pending" },
+      ];
+      setProcessingSteps([...steps]);
 
       const formData = new FormData();
       formData.append("file", file);
@@ -89,14 +107,32 @@ export default function Home() {
       const project = await apiRequest("POST", "/api/projects/upload", formData);
       setProjectId(project.id);
 
+      setProcessingSteps(prev => prev.map((s, i) => 
+        i === 0 ? { ...s, status: "complete" } : i === 1 ? { ...s, status: "processing" } : s
+      ));
+
       const validation = await apiRequest("POST", `/api/projects/${project.id}/validate`);
       setValidationResult(validation);
-      setIsAnalyzing(false);
+
+      setProcessingSteps(prev => prev.map((s, i) => 
+        i <= 1 ? { ...s, status: "complete" } : i === 2 ? { ...s, status: "processing" } : s
+      ));
 
       if (validation.isValid) {
+        setProcessingSteps(prev => prev.map((s, i) => 
+          i <= 2 ? { ...s, status: "complete" } : i === 3 ? { ...s, status: "processing" } : s
+        ));
+
+        const generatedQuestions = await apiRequest("POST", `/api/projects/${project.id}/questionnaire`);
+        setQuestions(generatedQuestions);
+
+        setProcessingSteps(prev => prev.map(s => ({ ...s, status: "complete" })));
+        
         setTimeout(() => {
-          handleGenerateQuestionnaire(project.id);
-        }, 1000);
+          setCurrentStep("validating");
+        }, 500);
+      } else {
+        setCurrentStep("validating");
       }
     } catch (error: any) {
       console.error("File upload error:", error);
@@ -105,15 +141,22 @@ export default function Home() {
         description: error.message || "Failed to upload document",
         variant: "destructive",
       });
-      setIsAnalyzing(false);
+      setCurrentStep("upload");
     }
   };
 
   const handleUrlSubmit = async (url: string) => {
     try {
       setDocumentName(url);
-      setCurrentStep("validating");
-      setIsAnalyzing(true);
+      setCurrentStep("processing");
+
+      const steps: ProcessingStep[] = [
+        { id: "fetch", message: "Fetching documentation from URL...", status: "processing" },
+        { id: "ai", message: "Sending information to AI for analysis...", status: "pending" },
+        { id: "validate", message: "Processing deployment guide and validating requirements...", status: "pending" },
+        { id: "extract", message: "Extracting configuration options...", status: "pending" },
+      ];
+      setProcessingSteps([...steps]);
 
       const project = await apiRequest("POST", "/api/projects/url", {
         url,
@@ -121,14 +164,32 @@ export default function Home() {
       });
       setProjectId(project.id);
 
+      setProcessingSteps(prev => prev.map((s, i) => 
+        i === 0 ? { ...s, status: "complete" } : i === 1 ? { ...s, status: "processing" } : s
+      ));
+
       const validation = await apiRequest("POST", `/api/projects/${project.id}/validate`);
       setValidationResult(validation);
-      setIsAnalyzing(false);
+
+      setProcessingSteps(prev => prev.map((s, i) => 
+        i <= 1 ? { ...s, status: "complete" } : i === 2 ? { ...s, status: "processing" } : s
+      ));
 
       if (validation.isValid) {
+        setProcessingSteps(prev => prev.map((s, i) => 
+          i <= 2 ? { ...s, status: "complete" } : i === 3 ? { ...s, status: "processing" } : s
+        ));
+
+        const generatedQuestions = await apiRequest("POST", `/api/projects/${project.id}/questionnaire`);
+        setQuestions(generatedQuestions);
+
+        setProcessingSteps(prev => prev.map(s => ({ ...s, status: "complete" })));
+        
         setTimeout(() => {
-          handleGenerateQuestionnaire(project.id);
-        }, 1000);
+          setCurrentStep("validating");
+        }, 500);
+      } else {
+        setCurrentStep("validating");
       }
     } catch (error: any) {
       console.error("URL submission error:", error);
@@ -137,23 +198,12 @@ export default function Home() {
         description: error.message || "Failed to fetch and analyze documentation",
         variant: "destructive",
       });
-      setIsAnalyzing(false);
+      setCurrentStep("upload");
     }
   };
 
-  const handleGenerateQuestionnaire = async (id: string) => {
-    try {
-      const generatedQuestions = await apiRequest("POST", `/api/projects/${id}/questionnaire`);
-      setQuestions(generatedQuestions);
-      setCurrentStep("questionnaire");
-    } catch (error: any) {
-      console.error("Questionnaire generation error:", error);
-      toast({
-        title: "Questionnaire Generation Failed",
-        description: error.message || "Failed to generate configuration questions",
-        variant: "destructive",
-      });
-    }
+  const handleProceedToConfiguration = () => {
+    setCurrentStep("configuration");
   };
 
   const handleQuestionnaireSubmit = async (answers: Record<string, any>) => {
@@ -187,7 +237,7 @@ export default function Home() {
   };
 
   const handleBack = () => {
-    const steps: Step[] = ["upload", "validating", "questionnaire", "playbook", "deploy", "validate"];
+    const steps: Step[] = ["upload", "processing", "validating", "configuration", "questionnaire", "playbook", "deploy", "validate"];
     const currentIndex = steps.indexOf(currentStep);
     if (currentIndex > 0) {
       setCurrentStep(steps[currentIndex - 1]);
@@ -234,14 +284,29 @@ export default function Home() {
           </div>
         )}
 
+        {currentStep === "processing" && (
+          <ProcessingScreen
+            steps={processingSteps}
+            onComplete={() => {}}
+          />
+        )}
+
         {currentStep === "validating" && (
           <ValidationScreen
-            isAnalyzing={isAnalyzing}
+            isAnalyzing={false}
             isValid={validationResult?.isValid || false}
             documentName={documentName}
             issues={validationResult?.issues || []}
             onRetry={handleRetryValidation}
-            onContinue={() => projectId && handleGenerateQuestionnaire(projectId)}
+            onContinue={handleProceedToConfiguration}
+          />
+        )}
+
+        {currentStep === "configuration" && questions.length > 0 && projectId && (
+          <ConfigurationScreen
+            questions={questions}
+            projectId={projectId}
+            onSubmit={handleQuestionnaireSubmit}
           />
         )}
 

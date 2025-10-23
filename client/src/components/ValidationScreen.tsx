@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { AlertCircle, CheckCircle2, FileText, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,15 @@ export function ValidationScreen({
   onRetry,
   onContinue,
 }: ValidationScreenProps) {
+  useEffect(() => {
+    if (isValid && !isAnalyzing && onContinue) {
+      const timer = setTimeout(() => {
+        onContinue();
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isValid, isAnalyzing, onContinue]);
+
   if (isAnalyzing) {
     return (
       <div className="w-full max-w-3xl mx-auto">
@@ -142,27 +152,18 @@ export function ValidationScreen({
         <CheckCircle2 className="h-4 w-4 text-chart-2" />
         <AlertTitle>Documentation Validated</AlertTitle>
         <AlertDescription>
-          The documentation contains sufficient information to generate an Ansible playbook.
-          We've identified the prerequisites and configuration options.
+          The documentation contains sufficient information. Proceeding to configuration options...
         </AlertDescription>
       </Alert>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            {documentName}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground mb-4">
-            Analysis complete. Ready to proceed with configuration questionnaire.
-          </p>
-          {onContinue && (
-            <Button onClick={onContinue} data-testid="button-proceed">
-              Proceed to Configuration
-            </Button>
-          )}
+        <CardContent className="pt-12 pb-12">
+          <div className="flex flex-col items-center justify-center text-center space-y-4">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">
+              Loading configuration options...
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>

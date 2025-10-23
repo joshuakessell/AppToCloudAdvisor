@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import multer from "multer";
 import { storage } from "./storage";
-import { validateDocument, generateQuestionnaire, generatePlaybook } from "./ai-service";
+import { validateDocument, generateQuestionnaire, generatePlaybook, autoCompleteConfiguration } from "./ai-service";
 import { insertProjectSchema } from "@shared/schema";
 
 const upload = multer({
@@ -231,6 +231,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(questions);
     } catch (error: any) {
       console.error("Questionnaire generation error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Auto-complete configuration
+  app.post("/api/projects/:id/autocomplete", async (req, res) => {
+    try {
+      const { explanation, questions, currentAnswers } = req.body;
+      
+      if (!explanation || !questions) {
+        return res.status(400).json({ error: "Explanation and questions are required" });
+      }
+
+      const answers = await autoCompleteConfiguration(
+        explanation,
+        questions,
+        currentAnswers || {}
+      );
+
+      res.json({ answers });
+    } catch (error: any) {
+      console.error("Auto-complete error:", error);
       res.status(500).json({ error: error.message });
     }
   });

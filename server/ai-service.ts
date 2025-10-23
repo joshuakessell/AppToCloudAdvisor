@@ -23,6 +23,8 @@ export interface Question {
   required: boolean;
   options?: string[];
   placeholder?: string;
+  helpText?: string;
+  examples?: string[];
 }
 
 export async function validateDocument(content: string, documentName: string): Promise<ValidationResult> {
@@ -102,13 +104,19 @@ Return a JSON object with a "questions" array:
       "id": "unique_id",
       "type": "provider" | "select" | "radio" | "checkbox" | "text" | "number" | "textarea",
       "label": "Question text",
-      "description": "Optional helpful description",
+      "description": "Brief helpful description",
       "required": true/false,
       "options": ["option1", "option2"],  // for select, radio, checkbox
-      "placeholder": "placeholder text"   // for text inputs
+      "placeholder": "placeholder text",   // for text inputs
+      "helpText": "Detailed explanation of what this field means and why it's important",
+      "examples": ["example1", "example2", "example3"]  // 2-3 concrete examples
     }
   ]
 }
+
+IMPORTANT: For EVERY question, provide:
+1. helpText: A detailed explanation (2-3 sentences) that helps users understand what this field is for, why it matters, and how it affects their deployment
+2. examples: 2-3 concrete, realistic examples of valid inputs
 
 Question type guide:
 - provider: for cloud provider selection (AWS/GCP/Azure)
@@ -169,4 +177,52 @@ Return ONLY the Ansible YAML playbook content, no additional explanation.`;
   });
 
   return completion.choices[0].message.content || "";
+}
+
+export async function autoCompleteConfiguration(
+  userExplanation: string,
+  questions: Question[],
+  currentAnswers: Record<string, any>
+): Promise<Record<string, any>> {
+  const prompt = `You are an expert DevOps engineer helping a user configure their deployment. The user has described how they want to use their application, and you need to fill in the configuration fields based on their description.
+
+User's Explanation:
+${userExplanation}
+
+Configuration Questions:
+${JSON.stringify(questions, null, 2)}
+
+Current Answers (may be empty or partial):
+${JSON.stringify(currentAnswers, null, 2)}
+
+Based on the user's explanation, provide appropriate values for each configuration question. Consider:
+1. The user's stated goals and requirements
+2. Best practices for the deployment type they described
+3. Sensible defaults where the user didn't provide specific details
+4. Consistency across related fields
+
+Return a JSON object with question IDs as keys and appropriate values:
+{
+  "question_id_1": "value",
+  "question_id_2": "value",
+  ...
+}
+
+For different field types:
+- text/textarea/number: Provide a specific value based on the user's needs
+- select/radio: Choose one of the available options
+- checkbox: Provide an array of selected options
+- provider: Choose "aws", "gcp", or "azure" based on what the user mentioned
+
+If the user didn't specify something, use reasonable defaults based on common deployment patterns.`;
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-5",
+    messages: [{ role: "user", content: prompt }],
+    response_format: { type: "json_object" },
+    max_completion_tokens: 3000,
+  });
+
+  const result = JSON.parse(completion.choices[0].message.content || "{}");
+  return result;
 }
