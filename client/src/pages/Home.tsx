@@ -8,12 +8,14 @@ import { DynamicQuestionnaire } from "@/components/DynamicQuestionnaire";
 import { PlaybookViewer } from "@/components/PlaybookViewer";
 import { DeploymentDashboard } from "@/components/DeploymentDashboard";
 import { ValidationResults } from "@/components/ValidationResults";
+import { GameLiftResourceVisualization } from "@/components/GameLiftResourceVisualization";
+import { GameLiftCostSimulator } from "@/components/GameLiftCostSimulator";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
-type Step = "upload" | "processing" | "validating" | "configuration" | "questionnaire" | "playbook" | "deploy" | "validate";
+type Step = "upload" | "processing" | "validating" | "resources" | "configuration" | "questionnaire" | "playbook" | "deploy" | "validate";
 
 interface ValidationResult {
   isValid: boolean;
@@ -218,7 +220,39 @@ export default function Home() {
   };
 
   const handleProceedToConfiguration = () => {
+    setCurrentStep("resources");
+  };
+
+  const handleProceedToSimulator = () => {
     setCurrentStep("configuration");
+  };
+
+  const handleCostCalculation = async (params: any) => {
+    try {
+      if (!resourcePlan) return;
+
+      toast({
+        title: "Calculating Costs",
+        description: "Generating detailed cost breakdown...",
+      });
+
+      const result = await apiRequest("POST", `/api/resource-plans/${resourcePlan.id}/calculate-costs`, params);
+      
+      toast({
+        title: "Costs Calculated",
+        description: `Initial: $${result.costs.total.initialSetup} | Monthly: $${result.costs.total.monthlyOperational}`,
+      });
+
+      // You could transition to a cost results screen here
+      console.log("Cost calculation result:", result);
+    } catch (error: any) {
+      console.error("Cost calculation error:", error);
+      toast({
+        title: "Calculation Failed",
+        description: error.message || "Failed to calculate costs",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleQuestionnaireSubmit = async (answers: Record<string, any>) => {
@@ -252,7 +286,7 @@ export default function Home() {
   };
 
   const handleBack = () => {
-    const steps: Step[] = ["upload", "processing", "validating", "configuration", "questionnaire", "playbook", "deploy", "validate"];
+    const steps: Step[] = ["upload", "processing", "validating", "resources", "configuration", "questionnaire", "playbook", "deploy", "validate"];
     const currentIndex = steps.indexOf(currentStep);
     if (currentIndex > 0) {
       setCurrentStep(steps[currentIndex - 1]);
@@ -317,11 +351,18 @@ export default function Home() {
           />
         )}
 
-        {currentStep === "configuration" && questions.length > 0 && projectId && (
-          <ConfigurationScreen
-            questions={questions}
-            projectId={projectId}
-            onSubmit={handleQuestionnaireSubmit}
+        {currentStep === "resources" && resourcePlan && (
+          <GameLiftResourceVisualization
+            resourcePlan={resourcePlan}
+            onProceedToSimulator={handleProceedToSimulator}
+          />
+        )}
+
+        {currentStep === "configuration" && resourcePlan && (
+          <GameLiftCostSimulator
+            resourcePlanId={resourcePlan.id}
+            defaultInstanceType={resourcePlan.fleetConfig?.instanceType || "c5.large"}
+            onCalculate={handleCostCalculation}
           />
         )}
 
