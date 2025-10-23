@@ -11,9 +11,11 @@ interface DocumentUploadProps {
   onUrlSubmit?: (url: string) => void;
 }
 
-export function DocumentUpload({ onFileSelect }: DocumentUploadProps) {
+export function DocumentUpload({ onFileSelect, onUrlSubmit }: DocumentUploadProps) {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [url, setUrl] = useState("");
+  const [submittedUrl, setSubmittedUrl] = useState("");
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -47,6 +49,19 @@ export function DocumentUpload({ onFileSelect }: DocumentUploadProps) {
 
   const handleClear = useCallback(() => {
     setSelectedFile(null);
+  }, []);
+
+  const handleUrlSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    if (url.trim()) {
+      setSubmittedUrl(url);
+      onUrlSubmit?.(url);
+    }
+  }, [url, onUrlSubmit]);
+
+  const handleClearUrl = useCallback(() => {
+    setUrl("");
+    setSubmittedUrl("");
   }, []);
 
   return (
