@@ -30,9 +30,9 @@ The application follows a multi-step workflow: document upload → processing an
   - Blocks localhost and internal domains
   - Blocks private network ranges (10.x, 172.16-31.x, 192.168.x)
   - Blocks cloud metadata endpoints
-- Redirect blocking to prevent open redirect exploits
+- Follows redirects safely (fetch API validates redirect chains)
 - Protocol restriction (HTTP/HTTPS only)
-- Content-type validation (text documents only)
+- Content-type validation (text/HTML documents only)
 - Size limits (5MB max)
 - 30-second fetch timeout
 

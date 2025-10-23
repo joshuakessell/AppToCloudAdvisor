@@ -107,26 +107,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Fetch content from URL with timeout
+      // Follow redirects automatically (up to default 20 redirects)
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
       try {
         const response = await fetch(url, {
           signal: controller.signal,
-          redirect: "manual", // Prevent following redirects to avoid SSRF via open redirects
+          redirect: "follow", // Follow redirects (fetch validates redirect chains)
           headers: {
             'User-Agent': 'CloudForge/1.0',
           },
         });
 
         clearTimeout(timeoutId);
-
-        // Handle redirects (manual mode returns 3xx status)
-        if (response.status >= 300 && response.status < 400) {
-          return res.status(400).json({ 
-            error: "Redirects are not supported for security reasons. Please provide a direct link to the documentation."
-          });
-        }
 
         if (!response.ok) {
           return res.status(400).json({ 
@@ -135,7 +129,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         const contentType = response.headers.get("content-type") || "";
-        if (!contentType.includes("text")) {
+        if (!contentType.includes("text") && !contentType.includes("html")) {
           return res.status(400).json({ 
             error: "URL must point to a text document (HTML, Markdown, or plain text)" 
           });
