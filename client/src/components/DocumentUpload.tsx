@@ -1,10 +1,14 @@
 import { useState, useCallback } from "react";
-import { Upload, FileText, X } from "lucide-react";
+import { Upload, FileText, X, Link as LinkIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
 
 interface DocumentUploadProps {
   onFileSelect: (file: File) => void;
+  onUrlSubmit?: (url: string) => void;
 }
 
 export function DocumentUpload({ onFileSelect }: DocumentUploadProps) {
