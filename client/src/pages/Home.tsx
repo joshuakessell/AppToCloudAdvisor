@@ -127,11 +127,14 @@ export default function Home() {
                 Transform Installation Guides into Cloud Deployments
               </h1>
               <p className="text-xl text-muted-foreground">
-                Upload your bare-metal installation guide and let AI generate production-ready
+                Upload your bare-metal installation guide or provide a documentation URL and let AI generate production-ready
                 Ansible playbooks for AWS, GCP, or Azure
               </p>
             </div>
-            <DocumentUpload onFileSelect={handleFileSelect} />
+            <DocumentUpload 
+              onFileSelect={handleFileSelect}
+              onUrlSubmit={handleUrlSubmit}
+            />
           </div>
         )}
 

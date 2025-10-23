@@ -1,15 +1,21 @@
 import { useState, useCallback } from "react";
-import { Upload, FileText, X } from "lucide-react";
+import { Upload, FileText, X, Link as LinkIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
 
 interface DocumentUploadProps {
   onFileSelect: (file: File) => void;
+  onUrlSubmit?: (url: string) => void;
 }
 
-export function DocumentUpload({ onFileSelect }: DocumentUploadProps) {
+export function DocumentUpload({ onFileSelect, onUrlSubmit }: DocumentUploadProps) {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [url, setUrl] = useState("");
+  const [submittedUrl, setSubmittedUrl] = useState("");
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -43,6 +49,19 @@ export function DocumentUpload({ onFileSelect }: DocumentUploadProps) {
 
   const handleClear = useCallback(() => {
     setSelectedFile(null);
+  }, []);
+
+  const handleUrlSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    if (url.trim()) {
+      setSubmittedUrl(url);
+      onUrlSubmit?.(url);
+    }
+  }, [url, onUrlSubmit]);
+
+  const handleClearUrl = useCallback(() => {
+    setUrl("");
+    setSubmittedUrl("");
   }, []);
 
   return (
