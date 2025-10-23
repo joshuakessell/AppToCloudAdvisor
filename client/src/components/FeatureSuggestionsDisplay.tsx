@@ -1,8 +1,10 @@
+import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { CheckCircle2, Star, Users, Trophy, BarChart3, Sparkles, Clock, Zap, Target } from "lucide-react";
+import { fadeInUp, cardEntrance, tabContent } from "@/lib/animations";
 
 interface Feature {
   name: string;
@@ -75,17 +77,22 @@ export function FeatureSuggestionsDisplay({ suggestions }: FeatureSuggestionsDis
 
   return (
     <div className="space-y-6">
-      <div>
+      <motion.div
+        variants={fadeInUp}
+        initial="hidden"
+        animate="visible"
+      >
         <h2 className="text-2xl font-bold mb-2" data-testid="text-feature-suggestions-title">
           Suggested Multiplayer Features
         </h2>
         <p className="text-muted-foreground">
           Enhance your game with these AWS-powered multiplayer features
         </p>
-      </div>
+      </motion.div>
 
       {/* Priority Roadmap */}
-      <Card className="border-primary/50 bg-primary/5">
+      <motion.div variants={cardEntrance} initial="hidden" animate="visible">
+        <Card className="border-primary/50 bg-primary/5">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Target className="h-5 w-5 text-primary" />
@@ -159,6 +166,7 @@ export function FeatureSuggestionsDisplay({ suggestions }: FeatureSuggestionsDis
           </div>
         </CardContent>
       </Card>
+      </motion.div>
 
       {/* Feature Categories */}
       <Tabs defaultValue={Object.keys(groupedFeatures)[0]} className="space-y-4">

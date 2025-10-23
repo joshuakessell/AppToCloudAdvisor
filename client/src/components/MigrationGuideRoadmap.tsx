@@ -1,8 +1,10 @@
+import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle2, Code, Server, TestTube, Rocket, Clock, BookOpen } from "lucide-react";
+import { fadeInUp, tabContent, cardEntrance } from "@/lib/animations";
 
 interface MigrationStep {
   phase: string;

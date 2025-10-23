@@ -1,7 +1,9 @@
+import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Cloud, Zap, DollarSign, Workflow, Server, Package, Globe } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { fadeInUp, staggerContainer, staggerItem, cardEntrance } from "@/lib/animations";
 
 interface AWSService {
   service: string;
@@ -62,34 +64,41 @@ export function MigrationPathwayVisualization({ migrationPlan }: MigrationPathwa
   const pathDescription = pathDescriptions[migrationPlan.recommendedPath] || "";
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      variants={staggerContainer}
+      initial="hidden"
+      animate="visible"
+      className="space-y-6"
+    >
       {/* Recommended Path Header */}
-      <Card className="border-primary/50 bg-primary/5">
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-primary" />
-                <CardTitle data-testid="text-recommended-path">Recommended Path: {pathLabel}</CardTitle>
+      <motion.div variants={cardEntrance}>
+        <Card className="border-primary/50 bg-primary/5">
+          <CardHeader>
+            <div className="flex items-start justify-between">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-primary" />
+                  <CardTitle data-testid="text-recommended-path">Recommended Path: {pathLabel}</CardTitle>
+                </div>
+                <CardDescription className="text-base">
+                  {pathDescription}
+                </CardDescription>
               </div>
-              <CardDescription className="text-base">
-                {pathDescription}
-              </CardDescription>
+              <PathIcon className="h-12 w-12 text-primary opacity-20" />
             </div>
-            <PathIcon className="h-12 w-12 text-primary opacity-20" />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="prose prose-sm dark:prose-invert max-w-none">
-            <p className="text-muted-foreground leading-relaxed" data-testid="text-path-reasoning">
-              {migrationPlan.pathReasoning}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent>
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+              <p className="text-muted-foreground leading-relaxed" data-testid="text-path-reasoning">
+                {migrationPlan.pathReasoning}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* AWS Services Breakdown */}
-      <div>
+      <motion.div variants={fadeInUp}>
         <h3 className="text-xl font-semibold mb-4">AWS Services for Your Game</h3>
         <Accordion type="multiple" defaultValue={["core", "backend"]} className="space-y-4">
           {/* Core Services */}
@@ -232,7 +241,7 @@ export function MigrationPathwayVisualization({ migrationPlan }: MigrationPathwa
           </AccordionItem>
           )}
         </Accordion>
-      </div>
+      </motion.div>
 
       {/* Cost Estimates */}
       {migrationPlan.costEstimates && (
@@ -278,6 +287,6 @@ export function MigrationPathwayVisualization({ migrationPlan }: MigrationPathwa
           </CardContent>
         </Card>
       )}
-    </div>
+    </motion.div>
   );
 }

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -12,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, ArrowRight, HelpCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { fadeInUp, staggerContainer, staggerItem } from "@/lib/animations";
 
 const clarifyingQuestionsSchema = z.object({
   targetPlayerCount: z.string().optional(),
@@ -87,17 +89,28 @@ export function ClarifyingQuestions({ gameId, gameName, onComplete, comprehensiv
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
+      <motion.div
+        variants={fadeInUp}
+        initial="hidden"
+        animate="visible"
+        className="space-y-2"
+      >
         <h2 className="text-2xl font-bold" data-testid="text-clarifying-title">
           Tell us about your multiplayer vision
         </h2>
         <p className="text-muted-foreground" data-testid="text-clarifying-description">
           Help us recommend the perfect AWS GameLift migration path for <span className="font-semibold">{gameName}</span>
         </p>
-      </div>
+      </motion.div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <motion.form
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="space-y-6"
+        >
           {/* Target Player Count */}
           <Card>
             <CardHeader>
@@ -439,7 +452,7 @@ export function ClarifyingQuestions({ gameId, gameName, onComplete, comprehensiv
               )}
             </Button>
           </div>
-        </form>
+        </motion.form>
       </Form>
     </div>
   );
