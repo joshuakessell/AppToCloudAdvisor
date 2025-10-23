@@ -8,7 +8,13 @@ import {
   type PricingTable,
   type InsertPricingTable,
   type CostSimulation,
-  type InsertCostSimulation
+  type InsertCostSimulation,
+  type ClarifyingResponse,
+  type InsertClarifyingResponse,
+  type MigrationRecommendation,
+  type InsertMigrationRecommendation,
+  type FeatureSuggestion,
+  type InsertFeatureSuggestion
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -38,6 +44,24 @@ export interface IStorage {
   listCostSimulationsByPlanId(planId: string): Promise<CostSimulation[]>;
   createCostSimulation(simulation: InsertCostSimulation): Promise<CostSimulation>;
 
+  // Clarifying response methods
+  getClarifyingResponse(id: string): Promise<ClarifyingResponse | undefined>;
+  getClarifyingResponseBySubmissionId(submissionId: string): Promise<ClarifyingResponse | undefined>;
+  createClarifyingResponse(response: InsertClarifyingResponse): Promise<ClarifyingResponse>;
+  updateClarifyingResponse(id: string, updates: Partial<InsertClarifyingResponse>): Promise<ClarifyingResponse | undefined>;
+
+  // Migration recommendation methods
+  getMigrationRecommendation(id: string): Promise<MigrationRecommendation | undefined>;
+  getMigrationRecommendationBySubmissionId(submissionId: string): Promise<MigrationRecommendation | undefined>;
+  createMigrationRecommendation(recommendation: InsertMigrationRecommendation): Promise<MigrationRecommendation>;
+  updateMigrationRecommendation(id: string, updates: Partial<InsertMigrationRecommendation>): Promise<MigrationRecommendation | undefined>;
+
+  // Feature suggestion methods
+  getFeatureSuggestion(id: string): Promise<FeatureSuggestion | undefined>;
+  getFeatureSuggestionBySubmissionId(submissionId: string): Promise<FeatureSuggestion | undefined>;
+  createFeatureSuggestion(suggestion: InsertFeatureSuggestion): Promise<FeatureSuggestion>;
+  updateFeatureSuggestion(id: string, updates: Partial<InsertFeatureSuggestion>): Promise<FeatureSuggestion | undefined>;
+
   // Legacy project methods (for backward compatibility)
   getProject(id: string): Promise<Project | undefined>;
   createProject(project: InsertProject): Promise<Project>;
@@ -50,6 +74,9 @@ export class MemStorage implements IStorage {
   private resourcePlans: Map<string, GameliftResourcePlan>;
   private pricingTables: Map<string, PricingTable>;
   private costSimulations: Map<string, CostSimulation>;
+  private clarifyingResponses: Map<string, ClarifyingResponse>;
+  private migrationRecommendations: Map<string, MigrationRecommendation>;
+  private featureSuggestions: Map<string, FeatureSuggestion>;
   private projects: Map<string, Project>; // Legacy
 
   constructor() {
@@ -57,6 +84,9 @@ export class MemStorage implements IStorage {
     this.resourcePlans = new Map();
     this.pricingTables = new Map();
     this.costSimulations = new Map();
+    this.clarifyingResponses = new Map();
+    this.migrationRecommendations = new Map();
+    this.featureSuggestions = new Map();
     this.projects = new Map();
   }
 
@@ -208,6 +238,129 @@ export class MemStorage implements IStorage {
     };
     this.costSimulations.set(id, simulation);
     return simulation;
+  }
+
+  // Clarifying Response Methods
+  async getClarifyingResponse(id: string): Promise<ClarifyingResponse | undefined> {
+    return this.clarifyingResponses.get(id);
+  }
+
+  async getClarifyingResponseBySubmissionId(submissionId: string): Promise<ClarifyingResponse | undefined> {
+    return Array.from(this.clarifyingResponses.values()).find(
+      (response) => response.gameSubmissionId === submissionId
+    );
+  }
+
+  async createClarifyingResponse(insertResponse: InsertClarifyingResponse): Promise<ClarifyingResponse> {
+    const id = randomUUID();
+    const response: ClarifyingResponse = {
+      ...insertResponse,
+      id,
+      targetPlayerCount: insertResponse.targetPlayerCount || null,
+      geographicReach: insertResponse.geographicReach || null,
+      latencyRequirements: insertResponse.latencyRequirements || null,
+      primaryGameModes: insertResponse.primaryGameModes || null,
+      monetizationStrategy: insertResponse.monetizationStrategy || null,
+      developmentStage: insertResponse.developmentStage || null,
+      multiplayerPlans: insertResponse.multiplayerPlans || null,
+      additionalRequirements: insertResponse.additionalRequirements || null,
+      createdAt: new Date(),
+    };
+    this.clarifyingResponses.set(id, response);
+    return response;
+  }
+
+  async updateClarifyingResponse(id: string, updates: Partial<InsertClarifyingResponse>): Promise<ClarifyingResponse | undefined> {
+    const response = this.clarifyingResponses.get(id);
+    if (!response) return undefined;
+
+    const updated: ClarifyingResponse = {
+      ...response,
+      ...updates,
+      id: response.id,
+      createdAt: response.createdAt,
+    };
+
+    this.clarifyingResponses.set(id, updated);
+    return updated;
+  }
+
+  // Migration Recommendation Methods
+  async getMigrationRecommendation(id: string): Promise<MigrationRecommendation | undefined> {
+    return this.migrationRecommendations.get(id);
+  }
+
+  async getMigrationRecommendationBySubmissionId(submissionId: string): Promise<MigrationRecommendation | undefined> {
+    return Array.from(this.migrationRecommendations.values()).find(
+      (recommendation) => recommendation.gameSubmissionId === submissionId
+    );
+  }
+
+  async createMigrationRecommendation(insertRecommendation: InsertMigrationRecommendation): Promise<MigrationRecommendation> {
+    const id = randomUUID();
+    const recommendation: MigrationRecommendation = {
+      ...insertRecommendation,
+      id,
+      clarifyingResponseId: insertRecommendation.clarifyingResponseId || null,
+      costEstimates: insertRecommendation.costEstimates || null,
+      createdAt: new Date(),
+    };
+    this.migrationRecommendations.set(id, recommendation);
+    return recommendation;
+  }
+
+  async updateMigrationRecommendation(id: string, updates: Partial<InsertMigrationRecommendation>): Promise<MigrationRecommendation | undefined> {
+    const recommendation = this.migrationRecommendations.get(id);
+    if (!recommendation) return undefined;
+
+    const updated: MigrationRecommendation = {
+      ...recommendation,
+      ...updates,
+      id: recommendation.id,
+      createdAt: recommendation.createdAt,
+    };
+
+    this.migrationRecommendations.set(id, updated);
+    return updated;
+  }
+
+  // Feature Suggestion Methods
+  async getFeatureSuggestion(id: string): Promise<FeatureSuggestion | undefined> {
+    return this.featureSuggestions.get(id);
+  }
+
+  async getFeatureSuggestionBySubmissionId(submissionId: string): Promise<FeatureSuggestion | undefined> {
+    return Array.from(this.featureSuggestions.values()).find(
+      (suggestion) => suggestion.gameSubmissionId === submissionId
+    );
+  }
+
+  async createFeatureSuggestion(insertSuggestion: InsertFeatureSuggestion): Promise<FeatureSuggestion> {
+    const id = randomUUID();
+    const suggestion: FeatureSuggestion = {
+      ...insertSuggestion,
+      id,
+      migrationRecommendationId: insertSuggestion.migrationRecommendationId || null,
+      priorityRanking: insertSuggestion.priorityRanking || null,
+      createdAt: new Date(),
+    };
+    this.featureSuggestions.set(id, suggestion);
+    return suggestion;
+  }
+
+  async updateFeatureSuggestion(id: string, updates: Partial<InsertFeatureSuggestion>): Promise<FeatureSuggestion | undefined> {
+    const suggestion = this.featureSuggestions.get(id);
+    if (!suggestion) return undefined;
+
+    const updated: FeatureSuggestion = {
+      ...suggestion,
+      ...updates,
+      id: suggestion.id,
+      createdAt: suggestion.createdAt,
+    };
+
+    this.featureSuggestions.set(id, updated);
+    return updated;
   }
 
   // Legacy Project Methods (for backward compatibility)

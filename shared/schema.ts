@@ -55,6 +55,46 @@ export const costSimulations = pgTable("cost_simulations", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Clarifying responses - user answers to strategic questions about multiplayer vision
+export const clarifyingResponses = pgTable("clarifying_responses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  gameSubmissionId: varchar("game_submission_id").notNull().references(() => gameSubmissions.id),
+  targetPlayerCount: text("target_player_count"), // 10s, 100s, 1000s, 10000s+
+  geographicReach: text("geographic_reach"), // regional, continental, global
+  latencyRequirements: text("latency_requirements"), // ultra_low (<50ms), low (<100ms), moderate (<200ms), flexible
+  primaryGameModes: jsonb("primary_game_modes"), // Array of game modes (deathmatch, battle_royale, coop, etc.)
+  monetizationStrategy: text("monetization_strategy"), // free_to_play, premium, subscription, not_decided
+  developmentStage: text("development_stage"), // prototype, alpha, beta, production, live
+  multiplayerPlans: text("multiplayer_plans"), // not_planned, future_feature, primary_focus
+  additionalRequirements: text("additional_requirements"), // Free-form text for other needs
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Migration recommendations - AI-generated AWS migration pathway and services breakdown
+export const migrationRecommendations = pgTable("migration_recommendations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  gameSubmissionId: varchar("game_submission_id").notNull().references(() => gameSubmissions.id),
+  clarifyingResponseId: varchar("clarifying_response_id").references(() => clarifyingResponses.id),
+  recommendedPath: text("recommended_path").notNull(), // anywhere, managed_ec2, managed_containers, realtime, fleetiq
+  pathReasoning: text("path_reasoning").notNull(), // Why this path was chosen
+  awsServicesBreakdown: jsonb("aws_services_breakdown").notNull(), // Complete AWS services applicable to this game
+  migrationSteps: jsonb("migration_steps").notNull(), // Step-by-step migration guide
+  sdkIntegrationGuide: jsonb("sdk_integration_guide").notNull(), // Code snippets and setup instructions
+  costEstimates: jsonb("cost_estimates"), // Estimated costs for recommended setup
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Feature suggestions - AI-generated recommendations for multiplayer features to add
+export const featureSuggestions = pgTable("feature_suggestions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  gameSubmissionId: varchar("game_submission_id").notNull().references(() => gameSubmissions.id),
+  migrationRecommendationId: varchar("migration_recommendation_id").references(() => migrationRecommendations.id),
+  suggestedFeatures: jsonb("suggested_features").notNull(), // Array of feature suggestions
+  implementationGuides: jsonb("implementation_guides").notNull(), // How to implement each feature with AWS
+  priorityRanking: jsonb("priority_ranking"), // Suggested order of implementation
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Insert schemas for validation
 export const insertGameSubmissionSchema = createInsertSchema(gameSubmissions).omit({
   id: true,
@@ -76,6 +116,21 @@ export const insertCostSimulationSchema = createInsertSchema(costSimulations).om
   createdAt: true,
 });
 
+export const insertClarifyingResponseSchema = createInsertSchema(clarifyingResponses).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertMigrationRecommendationSchema = createInsertSchema(migrationRecommendations).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertFeatureSuggestionSchema = createInsertSchema(featureSuggestions).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Type exports
 export type InsertGameSubmission = z.infer<typeof insertGameSubmissionSchema>;
 export type GameSubmission = typeof gameSubmissions.$inferSelect;
@@ -88,6 +143,15 @@ export type PricingTable = typeof pricingTables.$inferSelect;
 
 export type InsertCostSimulation = z.infer<typeof insertCostSimulationSchema>;
 export type CostSimulation = typeof costSimulations.$inferSelect;
+
+export type InsertClarifyingResponse = z.infer<typeof insertClarifyingResponseSchema>;
+export type ClarifyingResponse = typeof clarifyingResponses.$inferSelect;
+
+export type InsertMigrationRecommendation = z.infer<typeof insertMigrationRecommendationSchema>;
+export type MigrationRecommendation = typeof migrationRecommendations.$inferSelect;
+
+export type InsertFeatureSuggestion = z.infer<typeof insertFeatureSuggestionSchema>;
+export type FeatureSuggestion = typeof featureSuggestions.$inferSelect;
 
 // Legacy tables (deprecated - keep for migration compatibility)
 export const projects = pgTable("projects", {
