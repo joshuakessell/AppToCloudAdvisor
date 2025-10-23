@@ -1,19 +1,23 @@
 import { useState } from "react";
 import { Header } from "@/components/Header";
 import { DocumentUpload } from "@/components/DocumentUpload";
-import { AnalysisResults } from "@/components/AnalysisResults";
-import { ConfigurationForm } from "@/components/ConfigurationForm";
+import { ValidationScreen } from "@/components/ValidationScreen";
+import { DynamicQuestionnaire } from "@/components/DynamicQuestionnaire";
 import { PlaybookViewer } from "@/components/PlaybookViewer";
 import { DeploymentDashboard } from "@/components/DeploymentDashboard";
 import { ValidationResults } from "@/components/ValidationResults";
+import { AnalysisResults } from "@/components/AnalysisResults";
+import { ConfigurationForm } from "@/components/ConfigurationForm";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 
-type Step = "upload" | "analysis" | "configure" | "playbook" | "deploy" | "validate";
+type Step = "upload" | "analysis" | "configure" | "validating" | "questionnaire" | "playbook" | "deploy" | "validate";
 
 export default function Home() {
   const [currentStep, setCurrentStep] = useState<Step>("upload");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [documentName, setDocumentName] = useState("");
+  const [isValidDoc, setIsValidDoc] = useState(true);
 
   const mockPlaybook = `---
 - name: Deploy Application to Cloud
@@ -34,22 +38,82 @@ export default function Home() {
         name: nodejs
         state: present`;
 
-  const mockRequirements = [
+  const mockValidationIssues = [
     {
-      category: "Infrastructure",
-      items: ["Ubuntu 20.04 LTS", "2 CPU cores minimum", "4GB RAM", "20GB storage"]
+      severity: "error" as const,
+      message: "Document does not contain installation steps or commands. The documentation appears to be a feature overview rather than an installation guide."
     },
     {
-      category: "Dependencies",
-      items: ["Node.js 18.x", "PostgreSQL 14", "Nginx 1.18", "Redis 6.x"]
+      severity: "error" as const,
+      message: "No system requirements specified. Unable to determine minimum hardware, operating system, or software prerequisites."
     },
     {
-      category: "Configuration",
-      items: ["SSL certificate required", "Port 80, 443 open", "Domain name configured"]
+      severity: "warning" as const,
+      message: "Configuration details are vague or incomplete. Some optional parameters may not be available in the generated playbook."
+    }
+  ];
+
+  const mockDynamicQuestions = [
+    {
+      id: "cloud_provider",
+      type: "provider" as const,
+      label: "Select Cloud Provider",
+      description: "Choose your preferred cloud infrastructure platform, or select 'Cloud Agnostic' to generate a playbook that works across providers",
+      required: true
     },
     {
-      category: "Database",
-      items: ["PostgreSQL user with admin privileges", "Database initialization scripts"]
+      id: "deployment_region",
+      type: "select" as const,
+      label: "Deployment Region",
+      description: "Select the geographic region for your deployment",
+      required: true,
+      options: ["us-east-1 (N. Virginia)", "us-west-2 (Oregon)", "eu-west-1 (Ireland)", "ap-southeast-1 (Singapore)"]
+    },
+    {
+      id: "instance_count",
+      type: "number" as const,
+      label: "Number of Instances",
+      description: "How many instances should be provisioned initially?",
+      required: true,
+      placeholder: "e.g., 2"
+    },
+    {
+      id: "auto_scaling",
+      type: "radio" as const,
+      label: "Enable Auto-Scaling",
+      description: "Should the infrastructure automatically scale based on demand?",
+      required: true,
+      options: ["Yes, enable auto-scaling", "No, use fixed capacity"]
+    },
+    {
+      id: "database_config",
+      type: "select" as const,
+      label: "Database Configuration",
+      description: "Based on the documentation, PostgreSQL 14 is required. How should it be provisioned?",
+      required: true,
+      options: ["Managed database service (RDS/Cloud SQL)", "Self-hosted on VM", "Existing database (provide connection details later)"]
+    },
+    {
+      id: "features",
+      type: "checkbox" as const,
+      label: "Optional Features",
+      description: "Select additional features to include in your deployment",
+      required: false,
+      options: [
+        "SSL/TLS Certificate (via Let's Encrypt)",
+        "Database Backup Automation",
+        "Monitoring & Alerts",
+        "Log Aggregation",
+        "Redis Cache Layer"
+      ]
+    },
+    {
+      id: "custom_config",
+      type: "textarea" as const,
+      label: "Custom Configuration",
+      description: "Any additional configuration parameters or environment variables",
+      required: false,
+      placeholder: "Enter any custom configuration parameters..."
     }
   ];
 
@@ -88,20 +152,37 @@ export default function Home() {
 
   const handleFileSelect = (file: File) => {
     setSelectedFile(file);
-    setTimeout(() => setCurrentStep("analysis"), 1500);
+    setDocumentName(file.name);
+    setCurrentStep("validating");
+    
+    setTimeout(() => {
+      const random = Math.random();
+      setIsValidDoc(random > 0.3);
+    }, 2000);
   };
 
   const handleUrlSubmit = (url: string) => {
     console.log("URL submitted:", url);
-    setTimeout(() => setCurrentStep("analysis"), 1500);
+    setDocumentName(url);
+    setCurrentStep("validating");
+    
+    setTimeout(() => {
+      const random = Math.random();
+      setIsValidDoc(random > 0.3);
+    }, 2000);
   };
 
   const handleBack = () => {
-    const steps: Step[] = ["upload", "analysis", "configure", "playbook", "deploy", "validate"];
+    const steps: Step[] = ["upload", "validating", "questionnaire", "playbook", "deploy", "validate"];
     const currentIndex = steps.indexOf(currentStep);
     if (currentIndex > 0) {
       setCurrentStep(steps[currentIndex - 1]);
     }
+  };
+
+  const handleRetryValidation = () => {
+    setCurrentStep("upload");
+    setIsValidDoc(true);
   };
 
   return (
@@ -138,17 +219,22 @@ export default function Home() {
           </div>
         )}
 
-        {currentStep === "analysis" && (
-          <AnalysisResults
-            requirements={mockRequirements}
-            onContinue={() => setCurrentStep("configure")}
+        {currentStep === "validating" && (
+          <ValidationScreen
+            isAnalyzing={isValidDoc === true && currentStep === "validating"}
+            isValid={isValidDoc}
+            documentName={documentName}
+            issues={isValidDoc ? [] : mockValidationIssues}
+            onRetry={handleRetryValidation}
+            onContinue={() => setCurrentStep("questionnaire")}
           />
         )}
 
-        {currentStep === "configure" && (
-          <ConfigurationForm
-            onSubmit={(config) => {
-              console.log("Configuration:", config);
+        {currentStep === "questionnaire" && (
+          <DynamicQuestionnaire
+            questions={mockDynamicQuestions}
+            onSubmit={(answers) => {
+              console.log("Questionnaire answers:", answers);
               setCurrentStep("playbook");
             }}
           />
