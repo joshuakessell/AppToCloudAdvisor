@@ -5,7 +5,14 @@ import { storage } from "./storage";
 import { validateDocument, generateQuestionnaire, generatePlaybook, autoCompleteConfiguration } from "./ai-service";
 import { insertProjectSchema } from "@shared/schema";
 import { ingestGamePackage, GamePackageValidationError } from "./game-package-service";
-import { analyzeGameForGameLift, validateResourcePlan } from "./gamelift-ai-service";
+import { 
+  analyzeGameForGameLift, 
+  validateResourcePlan,
+  analyzeGameComprehensively,
+  generateMigrationRecommendations,
+  generateFeatureSuggestions,
+  type ComprehensiveGameAnalysis
+} from "./gamelift-ai-service";
 import { calculateCosts, generateCostScenarios, type CostParameters } from "./cost-calculator";
 
 const upload = multer({
@@ -208,6 +215,222 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(plan);
     } catch (error: any) {
       console.error("[Games] Get resource plan error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ==================== MIGRATION CONSULTANT ROUTES ====================
+
+  // Comprehensive game analysis for migration consulting
+  app.post("/api/games/:id/analyze-comprehensive", async (req, res) => {
+    try {
+      const submission = await storage.getGameSubmission(req.params.id);
+
+      if (!submission) {
+        return res.status(404).json({ error: "Game submission not found" });
+      }
+
+      if (!submission.markdownContent) {
+        return res.status(400).json({ error: "Game submission has no markdown content to analyze" });
+      }
+
+      // Perform comprehensive analysis
+      const analysis = await analyzeGameComprehensively(
+        submission.markdownContent,
+        (submission.packageMetadata as any)?.detectedLanguages || [],
+        submission.name,
+        submission.packageMetadata
+      );
+
+      // Update game submission with comprehensive analysis
+      await storage.updateGameSubmission(submission.id, {
+        analysisResult: analysis as any,
+        status: 'comprehensively_analyzed',
+      });
+
+      res.json({
+        analysis,
+        gameId: submission.id,
+      });
+    } catch (error: any) {
+      console.error("[Migration] Comprehensive analysis error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Submit clarifying question responses
+  app.post("/api/games/:id/clarifying-responses", async (req, res) => {
+    try {
+      const submission = await storage.getGameSubmission(req.params.id);
+
+      if (!submission) {
+        return res.status(404).json({ error: "Game submission not found" });
+      }
+
+      const {
+        targetPlayerCount,
+        geographicReach,
+        latencyRequirements,
+        primaryGameModes,
+        monetizationStrategy,
+        developmentStage,
+        multiplayerPlans,
+      } = req.body;
+
+      // Create clarifying responses record
+      const responses = await storage.createClarifyingResponse({
+        gameSubmissionId: submission.id,
+        targetPlayerCount,
+        geographicReach,
+        latencyRequirements,
+        primaryGameModes,
+        monetizationStrategy,
+        developmentStage,
+        multiplayerPlans,
+      });
+
+      res.json({
+        responses,
+        gameId: submission.id,
+      });
+    } catch (error: any) {
+      console.error("[Migration] Clarifying responses error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Generate migration recommendations
+  app.post("/api/games/:id/generate-migration-plan", async (req, res) => {
+    try {
+      const submission = await storage.getGameSubmission(req.params.id);
+
+      if (!submission) {
+        return res.status(404).json({ error: "Game submission not found" });
+      }
+
+      // Get comprehensive analysis
+      const comprehensiveAnalysis = submission.analysisResult as any as ComprehensiveGameAnalysis;
+      if (!comprehensiveAnalysis) {
+        return res.status(400).json({ error: "Comprehensive analysis not found. Run analyze-comprehensive first." });
+      }
+
+      // Get clarifying responses
+      const clarifyingResponses = await storage.getClarifyingResponseBySubmissionId(submission.id);
+      if (!clarifyingResponses) {
+        return res.status(400).json({ error: "Clarifying responses not found. Submit responses first." });
+      }
+
+      // Generate migration recommendations
+      const recommendations = await generateMigrationRecommendations(
+        comprehensiveAnalysis,
+        {
+          targetPlayerCount: clarifyingResponses.targetPlayerCount || undefined,
+          geographicReach: clarifyingResponses.geographicReach || undefined,
+          latencyRequirements: clarifyingResponses.latencyRequirements || undefined,
+          primaryGameModes: clarifyingResponses.primaryGameModes as any,
+          monetizationStrategy: clarifyingResponses.monetizationStrategy || undefined,
+          developmentStage: clarifyingResponses.developmentStage || undefined,
+          multiplayerPlans: clarifyingResponses.multiplayerPlans || undefined,
+        }
+      );
+
+      // Create migration recommendation record
+      const migrationPlan = await storage.createMigrationRecommendation({
+        gameSubmissionId: submission.id,
+        recommendedPath: recommendations.recommendedPath,
+        pathReasoning: recommendations.pathReasoning,
+        awsServicesBreakdown: recommendations.awsServicesBreakdown,
+        migrationSteps: recommendations.migrationSteps,
+        sdkIntegrationGuide: recommendations.sdkIntegrationGuide,
+        costEstimates: recommendations.costEstimates,
+      });
+
+      res.json({
+        migrationPlan,
+        recommendations,
+      });
+    } catch (error: any) {
+      console.error("[Migration] Recommendation generation error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Generate feature suggestions
+  app.post("/api/games/:id/generate-feature-suggestions", async (req, res) => {
+    try {
+      const submission = await storage.getGameSubmission(req.params.id);
+
+      if (!submission) {
+        return res.status(404).json({ error: "Game submission not found" });
+      }
+
+      // Get comprehensive analysis
+      const comprehensiveAnalysis = submission.analysisResult as any as ComprehensiveGameAnalysis;
+      if (!comprehensiveAnalysis) {
+        return res.status(400).json({ error: "Comprehensive analysis not found." });
+      }
+
+      // Get migration recommendations
+      const migrationPlan = await storage.getMigrationRecommendationBySubmissionId(submission.id);
+      if (!migrationPlan) {
+        return res.status(400).json({ error: "Migration plan not found. Generate migration plan first." });
+      }
+
+      // Generate feature suggestions
+      const suggestions = await generateFeatureSuggestions(
+        comprehensiveAnalysis,
+        {
+          recommendedPath: migrationPlan.recommendedPath,
+          awsServicesBreakdown: migrationPlan.awsServicesBreakdown,
+        }
+      );
+
+      // Create feature suggestions record
+      const featureSuggestions = await storage.createFeatureSuggestion({
+        gameSubmissionId: submission.id,
+        suggestedFeatures: suggestions.suggestedFeatures,
+        implementationGuides: suggestions.implementationGuides,
+        priorityRanking: suggestions.priorityRanking,
+      });
+
+      res.json({
+        featureSuggestions,
+        suggestions,
+      });
+    } catch (error: any) {
+      console.error("[Migration] Feature suggestion error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get migration plan for a game
+  app.get("/api/games/:id/migration-plan", async (req, res) => {
+    try {
+      const plan = await storage.getMigrationRecommendationBySubmissionId(req.params.id);
+
+      if (!plan) {
+        return res.status(404).json({ error: "Migration plan not found" });
+      }
+
+      res.json(plan);
+    } catch (error: any) {
+      console.error("[Migration] Get migration plan error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get feature suggestions for a game
+  app.get("/api/games/:id/feature-suggestions", async (req, res) => {
+    try {
+      const suggestions = await storage.getFeatureSuggestionBySubmissionId(req.params.id);
+
+      if (!suggestions) {
+        return res.status(404).json({ error: "Feature suggestions not found" });
+      }
+
+      res.json(suggestions);
+    } catch (error: any) {
+      console.error("[Migration] Get feature suggestions error:", error);
       res.status(500).json({ error: error.message });
     }
   });
