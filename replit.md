@@ -1,10 +1,10 @@
-# GameLift Resource Analyzer & Cost Estimator
+# AWS GameLift Migration Consultant
 
 ## Overview
 
-GameLift Resource Analyzer is an AI-powered platform that analyzes game packages and generates AWS GameLift infrastructure recommendations with detailed cost estimates. The platform accepts game packages via GitHub URL or ZIP file upload, uses GPT-5 to analyze game architecture and requirements, determines optimal GameLift resources (fleet types, instance sizes, scaling policies), and provides an interactive cost simulator for estimating infrastructure costs based on traffic variables.
+AWS GameLift Migration Consultant is an AI-powered platform that analyzes game packages and provides comprehensive migration guidance for transitioning from standalone to fully AWS-hosted multiplayer games. The platform accepts game packages via GitHub URL or ZIP file upload, uses GPT-5 to perform comprehensive game analysis, asks clarifying questions about multiplayer plans, recommends personalized AWS GameLift migration pathways, suggests multiplayer features to add, and delivers step-by-step migration roadmaps with SDK integration instructions.
 
-The application follows a multi-step workflow: game package upload → AI analysis → resource visualization → interactive cost simulation with detailed breakdowns.
+The application follows a multi-step workflow: game upload → comprehensive analysis → clarifying questions → migration pathway selection → feature suggestions → detailed migration roadmap with SDK integration guides.
 
 ## Current Status (October 23, 2025)
 
@@ -13,30 +13,30 @@ The application follows a multi-step workflow: game package upload → AI analys
 - ✅ Game package ingestion with markdown validation (game.md or README.md required)
 - ✅ Decompression bomb protection (10k files, 500MB max for ZIPs)
 - ✅ GitHub URL fetching with repository cloning
-- ✅ OpenAI GPT-5 integration via Replit AI Integrations for game analysis
-- ✅ AI-powered GameLift resource planning (fleet config, scaling policies, auxiliary services)
-- ✅ AWS GameLift pricing data system with automatic seeding across 4 regions
-- ✅ Cost calculation engine with peak/off-peak modeling and session duration multipliers
-- ✅ Interactive cost simulator with sliders for concurrent players, session duration, regions, instance types
-- ✅ Resource visualization showing fleet configuration, auto-scaling policies, recommended regions
+- ✅ OpenAI GPT-5 integration via Replit AI Integrations for comprehensive game analysis
+- ✅ AI-powered comprehensive game analysis (architecture, multiplayer capabilities, AWS readiness assessment)
+- ✅ Interactive clarifying questions form to understand user's migration goals
+- ✅ AI-generated migration recommendations with 5 AWS GameLift pathways (Anywhere, Managed EC2, Containers, Realtime, FleetIQ)
+- ✅ AWS services breakdown with detailed rationale for each recommended service
+- ✅ Multiplayer feature suggestions categorized by priority and impact
+- ✅ Step-by-step migration roadmap with phase breakdowns and time estimates
+- ✅ SDK integration guides (Server SDK, Client Backend, Testing) with code examples
 - ✅ Dark mode gaming-inspired UI with processing animations and typing effects
 - ✅ Comprehensive error handling and loading states throughout
 
-**Pricing Features:**
-- Static AWS GameLift pricing tables for 4 regions (us-east-1, us-west-2, eu-west-1, ap-southeast-1)
-- EC2 instance pricing (11 instance types in us-east-1, 5 in other regions)
-- Data transfer pricing (internet egress, inter-region transfer)
-- S3 storage pricing for game builds
-- GameLift service costs (matchmaking, FlexMatch, monitoring)
-- Automatic backfill and stale data refresh (7-day threshold)
-
-**Cost Calculation Model:**
-- Peak hours modeling: 8 hours/day at full instance capacity
-- Off-peak hours: 16 hours/day at 20% baseline capacity
-- Session duration multiplier: 1.0x to 1.5x based on gameplay length
-- Spot fleet discount: 30% off on-demand pricing
-- Multi-region cost multiplication
-- Breakdown: compute + storage + data transfer + GameLift services
+**Migration Consultant Features:**
+- **Comprehensive Game Analysis**: Detects game type, architecture, languages, existing multiplayer features, and AWS readiness score
+- **Clarifying Questions**: Collects user goals (player count, geographic reach, latency needs, game modes, monetization, dev stage, multiplayer priority)
+- **Five Migration Pathways**: 
+  - GameLift Anywhere (hybrid cloud, use existing servers)
+  - Managed EC2 Fleets (full AWS control, custom game servers)
+  - Container Fleets (Docker-based deployment, modern DevOps)
+  - Realtime Servers (lightweight WebSocket multiplayer)
+  - FleetIQ (hybrid approach, AWS + on-prem optimization)
+- **AWS Services Recommendations**: Core (GameLift, EC2, VPC), Backend (DynamoDB, ElastiCache, Lambda), Enhancement (CloudWatch, S3, SQS)
+- **Feature Suggestions**: Matchmaking systems, progression tracking, social features, analytics, content delivery
+- **Migration Roadmap**: Setup → Development → Integration → Testing → Deployment phases with detailed tasks and time estimates
+- **SDK Integration**: Language-specific Server SDK guides, Client Backend implementation, Testing strategies with code examples
 
 **Security Features:**
 - ZIP file upload limit: 50MB
@@ -68,13 +68,15 @@ Preferred communication style: Simple, everyday language.
 
 **Component Architecture:**
 - Modular component structure in `client/src/components`
-- UI primitives in `client/src/components/ui` (buttons, cards, forms, sliders, etc.)
+- UI primitives in `client/src/components/ui` (buttons, cards, forms, accordions, tabs, etc.)
 - Feature components for each workflow step:
   - **DocumentUpload**: Dual-path upload (GitHub URL or ZIP file) with validation
   - **ProcessingScreen**: Animated milestone tracking with typing effects (4 stages)
-  - **ValidationScreen**: Analysis success/failure with issue reporting
-  - **GameLiftResourceVisualization**: Fleet config, scaling policies, regions, auxiliary services
-  - **GameLiftCostSimulator**: Interactive sliders for cost estimation (concurrent players, session duration, instance types, regions)
+  - **ValidationScreen**: Analysis success/failure with AWS readiness score display
+  - **ClarifyingQuestions**: Interactive form collecting migration goals and requirements
+  - **MigrationPathwayVisualization**: Displays recommended AWS pathway with detailed rationale, services breakdown, and cost estimates
+  - **FeatureSuggestionsDisplay**: Shows multiplayer features categorized by priority with implementation guides
+  - **MigrationGuideRoadmap**: Step-by-step migration phases with SDK integration instructions and code examples
 - Shared ThemeProvider context for theme management
 - Toast notifications system for user feedback
 
@@ -83,7 +85,17 @@ Preferred communication style: Simple, everyday language.
 - React Query for API calls and server state caching
 - Context API for theme management
 - Step-based navigation state in the Home page component
-- Resource plan storage for visualization and cost simulation
+- Migration plan and feature suggestions storage for visualization
+
+**Workflow Steps:**
+1. `upload` - Game package upload (ZIP or GitHub URL)
+2. `processing` - Comprehensive AI analysis with animated progress
+3. `validating` - Display analysis results and AWS readiness score
+4. `clarifying` - Interactive questions form for migration goals
+5. `migration-plan` - Loading state while generating migration recommendations
+6. `pathway` - Display recommended AWS pathway and services
+7. `features` - Optional feature suggestions display
+8. `roadmap` - Final migration roadmap with SDK guides
 
 ### Backend Architecture
 
@@ -95,31 +107,38 @@ Preferred communication style: Simple, everyday language.
 - RESTful endpoints under `/api` prefix
 - File upload handling with Multer (50MB limit for game packages)
 - Routes in `server/routes.ts`:
-  - `POST /api/game-submissions/upload` - ZIP file upload and extraction
-  - `POST /api/game-submissions/github` - GitHub repository import
-  - `POST /api/game-submissions/:id/analyze` - AI-powered game analysis
-  - `GET /api/game-submissions/:id` - Retrieve submission details
-  - `POST /api/resource-plans/:id/calculate-costs` - Calculate costs with custom parameters
-  - `POST /api/resource-plans/:id/scenarios` - Generate multiple traffic scenarios
-  - `GET /api/resource-plans/:id/simulations` - List all cost simulations
-  - `GET /api/pricing/refresh` - Manually refresh pricing data
+  - `POST /api/games/upload` - ZIP file upload and extraction
+  - `POST /api/games/github` - GitHub repository import
+  - `POST /api/games/:id/analyze-comprehensive` - Comprehensive AI game analysis
+  - `POST /api/games/:id/clarifying-responses` - Submit clarifying question responses
+  - `POST /api/games/:id/generate-migration-plan` - Generate personalized migration recommendations
+  - `POST /api/games/:id/generate-feature-suggestions` - Generate multiplayer feature suggestions
+  - `GET /api/games/:id` - Retrieve game details
 
 **Business Logic:**
 - `server/game-package-service.ts` - GitHub cloning, ZIP extraction, markdown validation, language detection
-- `server/gamelift-ai-service.ts` - GPT-5 integration for game analysis and resource planning
-- `server/cost-calculator.ts` - Cost calculation engine with peak/off-peak modeling
-- `server/pricing-service.ts` - AWS pricing data retrieval and management
-- `server/seed-pricing.ts` - Static pricing data seeding for 4 AWS regions
+- `server/gamelift-migration-consultant.ts` - GPT-5 integration for comprehensive analysis, migration recommendations, and feature suggestions
 - `server/storage.ts` - Data persistence abstraction with in-memory implementation (IStorage interface)
-- Workflow states: uploaded → analyzed → resource_planned → cost_simulated
+- Workflow states: uploaded → analyzed → clarified → migration_planned → features_suggested
 
 **AI Integration:**
 - Uses Replit's AI Integrations service (OpenAI-compatible API)
-- GPT-5 model for game architecture analysis and resource planning
-- Structured prompts for consistent JSON responses
-- Functions:
-  - analyzeGamePackage: Analyzes game.md and code to determine architecture, player count, network model
-  - generateResourcePlan: Creates GameLift fleet configuration, scaling policies, auxiliary services
+- GPT-5 model for comprehensive game analysis and migration consulting
+- Structured prompts with embedded AWS GameLift knowledge
+- Three AI Functions:
+  - **analyzeGameComprehensively**: Deep analysis of game architecture, multiplayer capabilities, tech stack, and AWS readiness (0-10 score)
+  - **generateMigrationRecommendations**: Creates personalized AWS pathway, services breakdown, migration steps, and SDK integration guides
+  - **generateFeatureSuggestions**: Suggests multiplayer features based on game type with implementation guides and AWS service recommendations
+
+**AWS GameLift Knowledge Embedded in Prompts:**
+- 5 migration pathways with detailed characteristics and use cases
+- AWS services ecosystem (GameLift, EC2, DynamoDB, ElastiCache, Lambda, S3, CloudWatch, etc.)
+- FlexMatch matchmaking system
+- Spot Fleets and Auto Scaling policies
+- Hybrid hosting (GameLift Anywhere)
+- Container deployment strategies
+- Realtime Servers for WebSocket games
+- SDK integration patterns (Server SDK + Client Backend)
 
 ### Data Storage
 
@@ -131,32 +150,27 @@ Preferred communication style: Simple, everyday language.
 **Schema Design:**
 - `game_submissions` table: Stores uploaded game packages and metadata
   - Fields: id, name, submissionType (github/zip), githubUrl, artifactPath, markdownContent, detectedLanguages, status, createdAt
-- `gamelift_resource_plans` table: AI-generated resource recommendations
-  - Fields: id, gameSubmissionId, gameType, playerCount, networkModel, fleetConfig (JSONB), scalingPolicies (JSONB), recommendedRegions (JSONB), auxiliaryServices (JSONB), createdAt
-- `cost_simulations` table: Cost calculation results
-  - Fields: id, resourcePlanId, concurrentPlayers, sessionDurationMinutes, regions (JSONB), instanceFamily, calculatedInitialCost, calculatedMonthlyCost, costBreakdown (JSONB), createdAt
-- `pricing_tables` table: AWS GameLift pricing data
-  - Fields: id, service (ec2_instances/data_transfer/storage/gamelift_services), region, category, pricingData (JSONB), lastUpdated
+- `comprehensive_analyses` table: AI-generated comprehensive game analysis
+  - Fields: id, gameSubmissionId, gameType, currentArchitecture, existingMultiplayerFeatures (JSONB), awsReadiness (JSONB), technicalRequirements (JSONB), createdAt
+- `clarifying_responses` table: User responses to clarifying questions
+  - Fields: id, gameSubmissionId, targetPlayerCount, geographicReach (array), latencyRequirement, gameModes (array), monetizationModel, developmentStage, multiplayerPriority, additionalContext, createdAt
+- `migration_recommendations` table: AI-generated migration pathways and recommendations
+  - Fields: id, gameSubmissionId, recommendedPath, pathReasoning, awsServicesBreakdown (JSONB), migrationSteps (JSONB), sdkIntegrationGuide (JSONB), estimatedCosts (JSONB), createdAt
+- `feature_suggestions` table: AI-generated multiplayer feature recommendations
+  - Fields: id, gameSubmissionId, priorityRoadmap (JSONB), features (JSONB), createdAt
 
 **Data Flow:**
 - In-memory storage implementation (MemStorage) for development
 - Database schema defined in `shared/schema.ts` with Zod validation
 - Drizzle migrations via `npm run db:push`
-- Automatic pricing data seeding on server start
+- Sequential workflow enforcement: analysis must complete before clarifications, clarifications before migration plan, migration plan before features
 
 ### External Dependencies
 
 **AI Services:**
 - Replit AI Integrations (OpenAI API proxy)
 - No API key required - uses environment variables for base URL and credentials
-- Used for game analysis and GameLift resource planning
-
-**AWS GameLift Pricing:**
-- Static pricing data for 4 regions
-- EC2 instance types: c5.large, c5.xlarge, c5.2xlarge, c5.4xlarge, c6g.large, c6g.xlarge, c6g.2xlarge, etc.
-- Data transfer rates: internet egress, inter-region transfer
-- S3 storage: Standard, Infrequent Access, Glacier
-- GameLift services: matchmaking, FlexMatch, monitoring
+- Used for comprehensive game analysis, migration recommendations, and feature suggestions
 
 **Database:**
 - Neon PostgreSQL serverless database
@@ -164,10 +178,12 @@ Preferred communication style: Simple, everyday language.
 - WebSocket support for serverless environments
 
 **UI Libraries:**
-- Radix UI primitives for accessible components (including Slider)
+- Radix UI primitives for accessible components (Accordion, Tabs, RadioGroup, Select, Checkbox, etc.)
 - Lucide React for icons
 - date-fns for date formatting
 - cmdk for command palette functionality
+- react-hook-form for form state management
+- zod for form validation
 
 **Development Tools:**
 - Replit-specific plugins: vite-plugin-runtime-error-modal, vite-plugin-cartographer, vite-plugin-dev-banner
@@ -178,42 +194,49 @@ Preferred communication style: Simple, everyday language.
 - connect-pg-simple for PostgreSQL-backed sessions
 - Express session middleware
 
-## Cost Calculation Formulas
+## AWS GameLift Migration Pathways
 
-**Monthly Compute Cost:**
-```
-peakHours = 8 hours/day × 30 days = 240 hours
-offPeakHours = 16 hours/day × 30 days = 480 hours
+The platform recommends one of five AWS GameLift migration pathways based on the game's characteristics and user goals:
 
-peakCost = instancesNeeded × peakHours
-offPeakCost = (instancesNeeded × 0.2) × offPeakHours
+1. **GameLift Anywhere**: Hybrid cloud approach for gradual migration - use existing infrastructure while leveraging AWS matchmaking and player management
+2. **Managed EC2 Fleets**: Traditional dedicated game servers on AWS EC2 with full control and customization
+3. **Container Fleets**: Modern containerized deployment using Docker for consistent environments and easier scaling
+4. **Realtime Servers**: Lightweight WebSocket-based solution for turn-based or simple multiplayer games
+5. **FleetIQ**: Hybrid optimization combining AWS and on-premises infrastructure for cost efficiency
 
-baseMonthlyHours = peakCost + offPeakCost
-sessionMultiplier = min(1 + sessionDurationHours/10, 1.5)
-adjustedHours = baseMonthlyHours × sessionMultiplier
+Each pathway includes:
+- Detailed rationale and use case description
+- Core AWS services (GameLift, EC2, VPC, etc.)
+- Backend services (DynamoDB, ElastiCache, Lambda, etc.)
+- Enhancement services (CloudWatch, S3, SQS, etc.)
+- Migration timeline with phases (Setup, Development, Integration, Testing, Deployment)
+- SDK integration guides (Server SDK, Client Backend, Testing strategies)
+- Estimated costs (initial setup + monthly operational)
 
-monthlyCost = adjustedHours × hourlyRate × spotDiscount × regionsCount
-```
+## Multiplayer Feature Recommendations
 
-**Storage Cost:**
-```
-storageMonthlyCost = storageGB × s3Rate × regionsCount
-```
+The platform suggests multiplayer features across five categories:
 
-**Data Transfer Cost:**
-```
-dataTransferCost = monthlyTransferGB × (internetRate + interRegionRate)
-```
+1. **Matchmaking**: Skill-based matchmaking, ranked modes, party systems, region-based matching
+2. **Progression**: Player stats tracking, leaderboards, achievements, seasonal content
+3. **Social**: Friend systems, clans/guilds, in-game chat, social feeds
+4. **Analytics**: Player behavior tracking, retention metrics, A/B testing, performance monitoring
+5. **Content**: Live events, downloadable content, user-generated content, seasonal updates
 
-**Total Monthly Cost:**
-```
-totalMonthly = compute + storage + dataTransfer + gameliftServices
-```
+Each feature includes:
+- Priority level (Quick Wins, Medium-Term, Long-Term)
+- Difficulty rating (Beginner/Intermediate/Advanced)
+- Impact assessment (High/Medium/Low)
+- AWS services needed
+- Player benefits
+- Implementation guide with steps, AWS configuration, code examples, and time estimates
 
 ## Known Considerations
 
 - AI analysis times: 10-60 seconds per game package (depends on complexity)
-- Pricing data is static - manually seeded, not fetched from live AWS APIs
-- Session duration multiplier caps at 1.5x to prevent unrealistic cost inflation
-- Spot fleet pricing assumes 30% discount from on-demand pricing
-- Cost calculations use average monthly hours (730) with peak/off-peak modeling
+- Migration plan generation: 15-45 seconds (includes pathway selection and SDK guides)
+- Feature suggestions generation: 10-30 seconds
+- All AI responses use GPT-5 via Replit AI Integrations
+- AWS GameLift knowledge is embedded in AI prompts, not fetched from live AWS APIs
+- Cost estimates in migration recommendations are rough approximations for planning purposes
+- Users should validate AWS service pricing through official AWS pricing calculator
