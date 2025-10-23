@@ -1,10 +1,12 @@
 import { useState, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Upload, FileText, X, Link as LinkIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
+import { fadeIn, scaleIn, staggerContainer, staggerItem, cardEntrance } from "@/lib/animations";
 
 interface DocumentUploadProps {
   onFileSelect: (file: File) => void;
@@ -79,149 +81,206 @@ export function DocumentUpload({ onFileSelect, onUrlSubmit }: DocumentUploadProp
         </TabsList>
 
         <TabsContent value="file">
-          <div
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-            className={`relative border-2 border-dashed rounded-lg p-12 transition-colors ${
-              dragActive ? "border-primary bg-primary/5" : "border-border"
-            }`}
-            data-testid="upload-dropzone"
+          <motion.div
+            variants={fadeIn}
+            initial="hidden"
+            animate="visible"
           >
-            <input
-              type="file"
-              id="file-upload"
-              className="sr-only"
-              onChange={handleFileChange}
-              accept=".zip"
-              data-testid="input-file"
-            />
-            
-            {!selectedFile ? (
-              <label
-                htmlFor="file-upload"
-                className="flex flex-col items-center justify-center cursor-pointer"
-              >
-                <Upload className="h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-lg font-medium mb-2">Upload Game Package</p>
-                <p className="text-sm text-muted-foreground mb-4 text-center">
-                  Drag and drop your game package (ZIP) here, or click to browse
-                </p>
-                <Button variant="outline" data-testid="button-browse">
-                  Browse Files
-                </Button>
-              </label>
-            ) : (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <FileText className="h-10 w-10 text-primary" />
-                  <div>
-                    <p className="font-medium" data-testid="text-filename">{selectedFile.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {(selectedFile.size / 1024).toFixed(1)} KB
+            <motion.div
+              animate={{
+                scale: dragActive ? 1.01 : 1,
+                borderColor: dragActive ? "hsl(var(--primary))" : "hsl(var(--border))",
+              }}
+              transition={{ duration: 0.2 }}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+              className={`relative border-2 border-dashed rounded-lg p-12 transition-colors ${
+                dragActive ? "border-primary bg-primary/5" : "border-border"
+              }`}
+              data-testid="upload-dropzone"
+            >
+              <input
+                type="file"
+                id="file-upload"
+                className="sr-only"
+                onChange={handleFileChange}
+                accept=".zip"
+                data-testid="input-file"
+              />
+              
+              <AnimatePresence mode="wait">
+                {!selectedFile ? (
+                  <motion.label
+                    key="upload-prompt"
+                    variants={fadeIn}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    htmlFor="file-upload"
+                    className="flex flex-col items-center justify-center cursor-pointer"
+                  >
+                    <Upload className="h-12 w-12 text-muted-foreground mb-4" />
+                    <p className="text-lg font-medium mb-2">Upload Game Package</p>
+                    <p className="text-sm text-muted-foreground mb-4 text-center">
+                      Drag and drop your game package (ZIP) here, or click to browse
                     </p>
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleClear}
-                  data-testid="button-clear-file"
-                >
-                  <X className="h-5 w-5" />
-                </Button>
+                    <Button variant="outline" data-testid="button-browse">
+                      Browse Files
+                    </Button>
+                  </motion.label>
+                ) : (
+                  <motion.div
+                    key="selected-file"
+                    variants={scaleIn}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    className="flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-4">
+                      <FileText className="h-10 w-10 text-primary" />
+                      <div>
+                        <p className="font-medium" data-testid="text-filename">{selectedFile.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {(selectedFile.size / 1024).toFixed(1)} KB
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleClear}
+                      data-testid="button-clear-file"
+                    >
+                      <X className="h-5 w-5" />
+                    </Button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+            
+            <motion.div
+              variants={staggerContainer}
+              initial="hidden"
+              animate="visible"
+              className="mt-6"
+            >
+              <p className="text-sm text-muted-foreground mb-2">Requirements:</p>
+              <div className="flex flex-wrap gap-2">
+                {["ZIP Archive", "game.md or README.md Required", "Max 50MB"].map((format, idx) => (
+                  <motion.span
+                    key={format}
+                    variants={staggerItem}
+                    className="px-3 py-1 bg-muted rounded-full text-xs font-mono"
+                  >
+                    {format}
+                  </motion.span>
+                ))}
               </div>
-            )}
-          </div>
-          
-          <div className="mt-6">
-            <p className="text-sm text-muted-foreground mb-2">Requirements:</p>
-            <div className="flex flex-wrap gap-2">
-              {["ZIP Archive", "game.md or README.md Required", "Max 50MB"].map((format) => (
-                <span
-                  key={format}
-                  className="px-3 py-1 bg-muted rounded-full text-xs font-mono"
-                >
-                  {format}
-                </span>
-              ))}
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </TabsContent>
 
         <TabsContent value="url">
-          {!submittedUrl ? (
-            <form onSubmit={handleUrlSubmit} className="space-y-6">
-              <Card className="p-8">
-                <div className="flex flex-col items-center justify-center text-center mb-6">
-                  <LinkIcon className="h-12 w-12 text-muted-foreground mb-4" />
-                  <p className="text-lg font-medium mb-2">GitHub Repository URL</p>
-                  <p className="text-sm text-muted-foreground">
-                    Provide a link to your game's GitHub repository with game.md
-                  </p>
-                </div>
+          <AnimatePresence mode="wait">
+            {!submittedUrl ? (
+              <motion.form
+                key="url-form"
+                variants={fadeIn}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                onSubmit={handleUrlSubmit}
+                className="space-y-6"
+              >
+                <motion.div variants={cardEntrance}>
+                  <Card className="p-8">
+                    <div className="flex flex-col items-center justify-center text-center mb-6">
+                      <LinkIcon className="h-12 w-12 text-muted-foreground mb-4" />
+                      <p className="text-lg font-medium mb-2">GitHub Repository URL</p>
+                      <p className="text-sm text-muted-foreground">
+                        Provide a link to your game's GitHub repository with game.md
+                      </p>
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="doc-url">GitHub Repository URL</Label>
-                  <Input
-                    id="doc-url"
-                    type="url"
-                    placeholder="https://github.com/username/my-game"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    data-testid="input-url"
-                    className="font-mono text-sm"
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="doc-url">GitHub Repository URL</Label>
+                      <Input
+                        id="doc-url"
+                        type="url"
+                        placeholder="https://github.com/username/my-game"
+                        value={url}
+                        onChange={(e) => setUrl(e.target.value)}
+                        data-testid="input-url"
+                        className="font-mono text-sm"
+                      />
+                    </div>
 
-                <Button 
-                  type="submit" 
-                  className="w-full mt-6"
-                  disabled={!url.trim()}
-                  data-testid="button-submit-url"
-                >
-                  Analyze Game Package
-                </Button>
-              </Card>
-
-              <div className="mt-6">
-                <p className="text-sm text-muted-foreground mb-2">Requirements:</p>
-                <div className="flex flex-wrap gap-2">
-                  {["Public GitHub Repository", "game.md or README.md", "Source Code Included"].map((source) => (
-                    <span
-                      key={source}
-                      className="px-3 py-1 bg-muted rounded-full text-xs font-mono"
+                    <Button 
+                      type="submit" 
+                      className="w-full mt-6"
+                      disabled={!url.trim()}
+                      data-testid="button-submit-url"
                     >
-                      {source}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </form>
-          ) : (
-            <Card className="p-8">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <LinkIcon className="h-10 w-10 text-primary" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium mb-1">GitHub Repository</p>
-                    <p className="text-sm text-muted-foreground font-mono truncate" data-testid="text-submitted-url">
-                      {submittedUrl}
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleClearUrl}
-                  data-testid="button-clear-url"
+                      Analyze Game Package
+                    </Button>
+                  </Card>
+                </motion.div>
+
+                <motion.div
+                  variants={staggerContainer}
+                  initial="hidden"
+                  animate="visible"
+                  className="mt-6"
                 >
-                  <X className="h-5 w-5" />
-                </Button>
-              </div>
-            </Card>
-          )}
+                  <p className="text-sm text-muted-foreground mb-2">Requirements:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {["Public GitHub Repository", "game.md or README.md", "Source Code Included"].map((source) => (
+                      <motion.span
+                        key={source}
+                        variants={staggerItem}
+                        className="px-3 py-1 bg-muted rounded-full text-xs font-mono"
+                      >
+                        {source}
+                      </motion.span>
+                    ))}
+                  </div>
+                </motion.div>
+              </motion.form>
+            ) : (
+              <motion.div
+                key="submitted-url"
+                variants={scaleIn}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+              >
+                <Card className="p-8">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <LinkIcon className="h-10 w-10 text-primary" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium mb-1">GitHub Repository</p>
+                        <p className="text-sm text-muted-foreground font-mono truncate" data-testid="text-submitted-url">
+                          {submittedUrl}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleClearUrl}
+                      data-testid="button-clear-url"
+                    >
+                      <X className="h-5 w-5" />
+                    </Button>
+                  </div>
+                </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </TabsContent>
       </Tabs>
     </div>
