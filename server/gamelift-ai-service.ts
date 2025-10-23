@@ -169,7 +169,7 @@ Provide a comprehensive analysis of the game's current state, technology, and AW
 
   try {
     const response = await openai.chat.completions.create({
-      model: 'gpt-5',
+      model: 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -288,7 +288,7 @@ Provide a comprehensive resource plan optimized for AWS GameLift.`;
   try {
     // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
     const response = await openai.chat.completions.create({
-      model: 'gpt-5',
+      model: 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -455,7 +455,7 @@ Provide a personalized migration plan.`;
 
   try {
     const response = await openai.chat.completions.create({
-      model: 'gpt-5',
+      model: 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -546,7 +546,7 @@ Suggest 5-8 practical features they can add, prioritized by impact and difficult
 
   try {
     const response = await openai.chat.completions.create({
-      model: 'gpt-5',
+      model: 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
