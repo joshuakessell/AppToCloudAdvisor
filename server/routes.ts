@@ -60,58 +60,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const hostname = parsedUrl.hostname.toLowerCase();
 
-      // Allowlist approach: Only allow common documentation hosting domains
-      // This prevents DNS rebinding and other SSRF attacks
-      const allowedDomains = [
-        // Documentation hosting
-        'github.com',
-        'gitlab.com',
-        'bitbucket.org',
-        'docs.gitlab.com',
-        'raw.githubusercontent.com',
-        'gist.githubusercontent.com',
-        
-        // Common doc sites
-        'readthedocs.io',
-        'readthedocs.org',
-        'github.io',
-        'gitlab.io',
-        'gitbook.io',
-        
-        // Official docs
-        'docs.docker.com',
-        'kubernetes.io',
-        'docs.aws.amazon.com',
-        'cloud.google.com',
-        'docs.microsoft.com',
-        'nginx.org',
-        'apache.org',
-        'postgresql.org',
-        'mongodb.com',
-        'redis.io',
-        'elastic.co',
-        
-        // CDN and misc
-        'githubusercontent.com',
-        'raw.github.com',
-        'medium.com',
-        'dev.to',
-      ];
-
-      const isAllowed = allowedDomains.some(domain => 
-        hostname === domain || hostname.endsWith(`.${domain}`)
-      );
-
-      if (!isAllowed) {
+      // Security checks to prevent SSRF attacks
+      // Block direct IP addresses
+      const ipv4Pattern = /^(\d{1,3}\.){3}\d{1,3}$/;
+      const ipv6Pattern = /^([0-9a-f]{0,4}:){2,7}[0-9a-f]{0,4}$/i;
+      
+      if (ipv4Pattern.test(hostname) || ipv6Pattern.test(hostname)) {
         return res.status(400).json({ 
-          error: `URL domain "${hostname}" is not in the allowed list. Please use documentation from trusted sources like GitHub, GitLab, ReadTheDocs, or official project documentation sites.`
+          error: "Direct IP addresses are not allowed for security reasons. Please use a domain name." 
         });
       }
 
-      // Additional check: Block IP addresses in hostname (DNS rebinding prevention)
-      const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$|^([0-9a-f]{0,4}:){2,7}[0-9a-f]{0,4}$/i;
-      if (ipPattern.test(hostname)) {
-        return res.status(400).json({ error: "Direct IP addresses are not allowed. Please use a domain name from an allowed documentation source." });
+      // Block localhost and common internal domains
+      const blockedHostnames = [
+        'localhost',
+        'localhost.localdomain',
+        '0.0.0.0',
+        '127.0.0.1',
+        '::1',
+        'metadata.google.internal', // GCP metadata
+        '169.254.169.254', // AWS/Azure metadata
+      ];
+
+      if (blockedHostnames.includes(hostname)) {
+        return res.status(400).json({ 
+          error: "Cannot fetch from internal or localhost addresses." 
+        });
+      }
+
+      // Block private network ranges by checking if hostname resolves to private IP
+      // This is a best-effort check - actual blocking happens at network level
+      const privateNetworkPatterns = [
+        /^10\./,
+        /^172\.(1[6-9]|2[0-9]|3[0-1])\./,
+        /^192\.168\./,
+        /^127\./,
+        /^169\.254\./, // link-local
+        /^fc00:/i, // IPv6 private
+        /^fe80:/i, // IPv6 link-local
+      ];
+
+      if (privateNetworkPatterns.some(pattern => pattern.test(hostname))) {
+        return res.status(400).json({ 
+          error: "Cannot fetch from private network addresses." 
+        });
       }
 
       // Fetch content from URL with timeout

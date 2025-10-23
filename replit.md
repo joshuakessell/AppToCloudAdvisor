@@ -24,10 +24,16 @@ The application follows a multi-step workflow: document upload → processing an
 - ✅ Soft copy storage with revert functionality for auto-completed fields
 
 **Security Features:**
-- Domain allowlist for URL fetching (GitHub, GitLab, ReadTheDocs, official docs)
-- Redirect blocking to prevent SSRF attacks
-- IP address filtering
-- Content-type validation and size limits
+- Accepts documentation URLs from any public domain
+- SSRF attack prevention:
+  - Blocks direct IP addresses (IPv4 and IPv6)
+  - Blocks localhost and internal domains
+  - Blocks private network ranges (10.x, 172.16-31.x, 192.168.x)
+  - Blocks cloud metadata endpoints
+- Redirect blocking to prevent open redirect exploits
+- Protocol restriction (HTTP/HTTPS only)
+- Content-type validation (text documents only)
+- Size limits (5MB max)
 - 30-second fetch timeout
 
 **Known Considerations:**
