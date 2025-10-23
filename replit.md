@@ -1,46 +1,49 @@
-# CloudForge - Infrastructure Automation Platform
+# GameLift Resource Analyzer & Cost Estimator
 
 ## Overview
 
-CloudForge is an AI-powered infrastructure automation platform that transforms bare-metal installation documentation into cloud deployment playbooks. The platform analyzes installation guides (uploaded files or URLs), validates their completeness, generates dynamic questionnaires to gather deployment parameters, and produces Ansible playbooks for automated deployment on AWS, GCP, and Azure.
+GameLift Resource Analyzer is an AI-powered platform that analyzes game packages and generates AWS GameLift infrastructure recommendations with detailed cost estimates. The platform accepts game packages via GitHub URL or ZIP file upload, uses GPT-5 to analyze game architecture and requirements, determines optimal GameLift resources (fleet types, instance sizes, scaling policies), and provides an interactive cost simulator for estimating infrastructure costs based on traffic variables.
 
-The application follows a multi-step workflow: document upload → processing animation → AI validation → configuration screen (with help modals and AI auto-complete) → playbook generation → deployment monitoring → validation checks.
+The application follows a multi-step workflow: game package upload → AI analysis → resource visualization → interactive cost simulation with detailed breakdowns.
 
 ## Current Status (October 23, 2025)
 
 **Fully Implemented:**
-- ✅ File upload system with drag-and-drop support (PDF, Markdown, Text, Word)
-- ✅ URL-based document fetching with comprehensive SSRF protection
-- ✅ OpenAI GPT-5 integration for AI-powered analysis
-- ✅ Document validation with detailed error reporting
-- ✅ Dynamic questionnaire generation based on document analysis
-- ✅ Cloud platform selection as first question (AWS/GCP/Azure/Cloud Agnostic)
-- ✅ Ansible playbook generation from user configurations
-- ✅ Dark mode DevOps-inspired UI
-- ✅ Error handling and loading states throughout
-- ✅ Processing screen with animated milestones and typing effects
-- ✅ Unified configuration screen with all fields visible at once
-- ✅ Help icons with detailed explanations and examples for each field
-- ✅ AI-powered auto-complete for configuration fields
-- ✅ Soft copy storage with revert functionality for auto-completed fields
+- ✅ Dual-path upload system: GitHub repository URLs or ZIP file uploads
+- ✅ Game package ingestion with markdown validation (game.md or README.md required)
+- ✅ Decompression bomb protection (10k files, 500MB max for ZIPs)
+- ✅ GitHub URL fetching with repository cloning
+- ✅ OpenAI GPT-5 integration via Replit AI Integrations for game analysis
+- ✅ AI-powered GameLift resource planning (fleet config, scaling policies, auxiliary services)
+- ✅ AWS GameLift pricing data system with automatic seeding across 4 regions
+- ✅ Cost calculation engine with peak/off-peak modeling and session duration multipliers
+- ✅ Interactive cost simulator with sliders for concurrent players, session duration, regions, instance types
+- ✅ Resource visualization showing fleet configuration, auto-scaling policies, recommended regions
+- ✅ Dark mode gaming-inspired UI with processing animations and typing effects
+- ✅ Comprehensive error handling and loading states throughout
+
+**Pricing Features:**
+- Static AWS GameLift pricing tables for 4 regions (us-east-1, us-west-2, eu-west-1, ap-southeast-1)
+- EC2 instance pricing (11 instance types in us-east-1, 5 in other regions)
+- Data transfer pricing (internet egress, inter-region transfer)
+- S3 storage pricing for game builds
+- GameLift service costs (matchmaking, FlexMatch, monitoring)
+- Automatic backfill and stale data refresh (7-day threshold)
+
+**Cost Calculation Model:**
+- Peak hours modeling: 8 hours/day at full instance capacity
+- Off-peak hours: 16 hours/day at 20% baseline capacity
+- Session duration multiplier: 1.0x to 1.5x based on gameplay length
+- Spot fleet discount: 30% off on-demand pricing
+- Multi-region cost multiplication
+- Breakdown: compute + storage + data transfer + GameLift services
 
 **Security Features:**
-- Accepts documentation URLs from any public domain
-- SSRF attack prevention:
-  - Blocks direct IP addresses (IPv4 and IPv6)
-  - Blocks localhost and internal domains
-  - Blocks private network ranges (10.x, 172.16-31.x, 192.168.x)
-  - Blocks cloud metadata endpoints
-- Follows redirects safely (fetch API validates redirect chains)
-- Protocol restriction (HTTP/HTTPS only)
-- Content-type validation (text/HTML documents only)
-- Size limits (5MB max)
-- 30-second fetch timeout
-
-**Known Considerations:**
-- AI validation may be strict - uses GPT-5 to determine if documents contain valid installation instructions
-- AI processing times: 10-60 seconds per request (validation, questionnaire, playbook)
-- Validation criteria has been tuned to be lenient - accepts basic installation guides with commands
+- ZIP file upload limit: 50MB
+- Decompression bomb protection: max 10,000 files, 500MB uncompressed
+- GitHub URL validation (public repositories only)
+- No SSRF risks (GitHub API used for cloning)
+- Markdown content validation (game.md or README.md required)
 
 ## User Preferences
 
@@ -52,29 +55,26 @@ Preferred communication style: Simple, everyday language.
 
 **Framework & Tooling:**
 - React with TypeScript using Vite as the build tool
-- Wouter for client-side routing (lightweight alternative to React Router)
+- Wouter for client-side routing
 - TanStack Query (React Query) for server state management
 - shadcn/ui component library based on Radix UI primitives
 
 **Design System:**
-- Dark mode as the primary interface with light mode alternative
-- Color palette inspired by developer platforms (GitHub, Vercel, Linear)
+- Dark mode as the primary interface
+- Gaming/DevOps-inspired color palette
 - Typography: Inter for UI elements, JetBrains Mono for code/technical content
 - Tailwind CSS for styling with custom theme configuration
-- CSS variables for theme switching between light/dark modes
+- CSS variables for theme switching
 
 **Component Architecture:**
 - Modular component structure in `client/src/components`
-- UI primitives in `client/src/components/ui` (buttons, cards, forms, dialogs, etc.)
+- UI primitives in `client/src/components/ui` (buttons, cards, forms, sliders, etc.)
 - Feature components for each workflow step:
-  - DocumentUpload: File and URL upload interface
-  - ProcessingScreen: Animated milestone tracking with typing effects
-  - ValidationScreen: Document validation results with auto-transition
-  - ConfigurationScreen: Unified configuration form with help modals and AI auto-complete
-  - DynamicQuestionnaire: Legacy step-by-step questionnaire (kept for compatibility)
-  - PlaybookViewer: Generated playbook display and download
-  - DeploymentDashboard: Deployment monitoring interface
-  - ValidationResults: Post-deployment validation checks
+  - **DocumentUpload**: Dual-path upload (GitHub URL or ZIP file) with validation
+  - **ProcessingScreen**: Animated milestone tracking with typing effects (4 stages)
+  - **ValidationScreen**: Analysis success/failure with issue reporting
+  - **GameLiftResourceVisualization**: Fleet config, scaling policies, regions, auxiliary services
+  - **GameLiftCostSimulator**: Interactive sliders for cost estimation (concurrent players, session duration, instance types, regions)
 - Shared ThemeProvider context for theme management
 - Toast notifications system for user feedback
 
@@ -83,6 +83,7 @@ Preferred communication style: Simple, everyday language.
 - React Query for API calls and server state caching
 - Context API for theme management
 - Step-based navigation state in the Home page component
+- Resource plan storage for visualization and cost simulation
 
 ### Backend Architecture
 
@@ -92,30 +93,33 @@ Preferred communication style: Simple, everyday language.
 
 **API Structure:**
 - RESTful endpoints under `/api` prefix
-- File upload handling with Multer (10MB limit, in-memory storage)
+- File upload handling with Multer (50MB limit for game packages)
 - Routes in `server/routes.ts`:
-  - `POST /api/projects/upload` - File upload and project creation
-  - `POST /api/projects/url` - URL-based document import
-  - `POST /api/projects/:id/validate` - Document validation
-  - `POST /api/projects/:id/questionnaire` - Generate configuration questions
-  - `POST /api/projects/:id/autocomplete` - AI auto-complete for configuration fields
-  - `POST /api/projects/:id/playbook` - Generate Ansible playbook
-  - `GET /api/projects/:id` - Retrieve project details
+  - `POST /api/game-submissions/upload` - ZIP file upload and extraction
+  - `POST /api/game-submissions/github` - GitHub repository import
+  - `POST /api/game-submissions/:id/analyze` - AI-powered game analysis
+  - `GET /api/game-submissions/:id` - Retrieve submission details
+  - `POST /api/resource-plans/:id/calculate-costs` - Calculate costs with custom parameters
+  - `POST /api/resource-plans/:id/scenarios` - Generate multiple traffic scenarios
+  - `GET /api/resource-plans/:id/simulations` - List all cost simulations
+  - `GET /api/pricing/refresh` - Manually refresh pricing data
 
 **Business Logic:**
-- `server/ai-service.ts` - OpenAI integration for document analysis, questionnaire generation, and playbook creation
+- `server/game-package-service.ts` - GitHub cloning, ZIP extraction, markdown validation, language detection
+- `server/gamelift-ai-service.ts` - GPT-5 integration for game analysis and resource planning
+- `server/cost-calculator.ts` - Cost calculation engine with peak/off-peak modeling
+- `server/pricing-service.ts` - AWS pricing data retrieval and management
+- `server/seed-pricing.ts` - Static pricing data seeding for 4 AWS regions
 - `server/storage.ts` - Data persistence abstraction with in-memory implementation (IStorage interface)
-- Project workflow states: uploaded → validated → configured → playbook_generated → deployed → validated
+- Workflow states: uploaded → analyzed → resource_planned → cost_simulated
 
 **AI Integration:**
 - Uses Replit's AI Integrations service (OpenAI-compatible API)
-- GPT-5 model for document validation, requirement extraction, and playbook generation
+- GPT-5 model for game architecture analysis and resource planning
 - Structured prompts for consistent JSON responses
 - Functions:
-  - validateDocument: Analyzes installation guides for completeness
-  - generateQuestionnaire: Creates configuration questions with help text and examples
-  - generatePlaybook: Generates Ansible playbooks from configurations
-  - autoCompleteConfiguration: AI-powered auto-fill for configuration fields based on user descriptions
+  - analyzeGamePackage: Analyzes game.md and code to determine architecture, player count, network model
+  - generateResourcePlan: Creates GameLift fleet configuration, scaling policies, auxiliary services
 
 ### Data Storage
 
@@ -125,28 +129,34 @@ Preferred communication style: Simple, everyday language.
 - WebSocket connection support for serverless environments
 
 **Schema Design:**
-- `projects` table: Stores uploaded documents, analysis results, configurations, and generated playbooks
-  - Fields: id, name, documentName, documentContent, analysisResult (JSONB), configuration (JSONB), playbook (text), status, createdAt
-- `deployments` table: Tracks deployment executions and logs
-  - Fields: id, projectId (foreign key), cloudProvider, status, logs (JSONB), createdAt
+- `game_submissions` table: Stores uploaded game packages and metadata
+  - Fields: id, name, submissionType (github/zip), githubUrl, artifactPath, markdownContent, detectedLanguages, status, createdAt
+- `gamelift_resource_plans` table: AI-generated resource recommendations
+  - Fields: id, gameSubmissionId, gameType, playerCount, networkModel, fleetConfig (JSONB), scalingPolicies (JSONB), recommendedRegions (JSONB), auxiliaryServices (JSONB), createdAt
+- `cost_simulations` table: Cost calculation results
+  - Fields: id, resourcePlanId, concurrentPlayers, sessionDurationMinutes, regions (JSONB), instanceFamily, calculatedInitialCost, calculatedMonthlyCost, costBreakdown (JSONB), createdAt
+- `pricing_tables` table: AWS GameLift pricing data
+  - Fields: id, service (ec2_instances/data_transfer/storage/gamelift_services), region, category, pricingData (JSONB), lastUpdated
 
 **Data Flow:**
 - In-memory storage implementation (MemStorage) for development
 - Database schema defined in `shared/schema.ts` with Zod validation
-- Drizzle migrations in `migrations/` directory
-- Schema push via `npm run db:push`
+- Drizzle migrations via `npm run db:push`
+- Automatic pricing data seeding on server start
 
 ### External Dependencies
 
 **AI Services:**
 - Replit AI Integrations (OpenAI API proxy)
 - No API key required - uses environment variables for base URL and credentials
-- Used for document validation, requirement extraction, and playbook generation
+- Used for game analysis and GameLift resource planning
 
-**Cloud Provider Integration:**
-- Designed to support AWS, GCP, and Azure deployments
-- Ansible playbook generation targets multiple cloud platforms
-- Cloud provider selection through dynamic questionnaire
+**AWS GameLift Pricing:**
+- Static pricing data for 4 regions
+- EC2 instance types: c5.large, c5.xlarge, c5.2xlarge, c5.4xlarge, c6g.large, c6g.xlarge, c6g.2xlarge, etc.
+- Data transfer rates: internet egress, inter-region transfer
+- S3 storage: Standard, Infrequent Access, Glacier
+- GameLift services: matchmaking, FlexMatch, monitoring
 
 **Database:**
 - Neon PostgreSQL serverless database
@@ -154,7 +164,7 @@ Preferred communication style: Simple, everyday language.
 - WebSocket support for serverless environments
 
 **UI Libraries:**
-- Radix UI primitives for accessible components
+- Radix UI primitives for accessible components (including Slider)
 - Lucide React for icons
 - date-fns for date formatting
 - cmdk for command palette functionality
@@ -166,4 +176,44 @@ Preferred communication style: Simple, everyday language.
 
 **Session Management:**
 - connect-pg-simple for PostgreSQL-backed sessions
-- Express session middleware (configuration expected but not fully visible in files)
+- Express session middleware
+
+## Cost Calculation Formulas
+
+**Monthly Compute Cost:**
+```
+peakHours = 8 hours/day × 30 days = 240 hours
+offPeakHours = 16 hours/day × 30 days = 480 hours
+
+peakCost = instancesNeeded × peakHours
+offPeakCost = (instancesNeeded × 0.2) × offPeakHours
+
+baseMonthlyHours = peakCost + offPeakCost
+sessionMultiplier = min(1 + sessionDurationHours/10, 1.5)
+adjustedHours = baseMonthlyHours × sessionMultiplier
+
+monthlyCost = adjustedHours × hourlyRate × spotDiscount × regionsCount
+```
+
+**Storage Cost:**
+```
+storageMonthlyCost = storageGB × s3Rate × regionsCount
+```
+
+**Data Transfer Cost:**
+```
+dataTransferCost = monthlyTransferGB × (internetRate + interRegionRate)
+```
+
+**Total Monthly Cost:**
+```
+totalMonthly = compute + storage + dataTransfer + gameliftServices
+```
+
+## Known Considerations
+
+- AI analysis times: 10-60 seconds per game package (depends on complexity)
+- Pricing data is static - manually seeded, not fetched from live AWS APIs
+- Session duration multiplier caps at 1.5x to prevent unrealistic cost inflation
+- Spot fleet pricing assumes 30% discount from on-demand pricing
+- Cost calculations use average monthly hours (730) with peak/off-peak modeling
