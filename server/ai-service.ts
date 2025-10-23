@@ -26,19 +26,29 @@ export interface Question {
 }
 
 export async function validateDocument(content: string, documentName: string): Promise<ValidationResult> {
-  const prompt = `You are an expert DevOps engineer analyzing installation documentation. 
-
-Analyze the following document and determine if it contains sufficient information to generate an Ansible playbook for cloud deployment.
+  const prompt = `You are an expert DevOps engineer analyzing installation documentation. Your goal is to determine if a document contains enough information to create a basic Ansible playbook.
 
 Document: ${documentName}
 Content:
 ${content.substring(0, 15000)} ${content.length > 15000 ? '...[truncated]' : ''}
 
-Evaluate:
-1. Does it contain step-by-step installation instructions with actual commands?
-2. Are system requirements clearly specified (OS, hardware, dependencies)?
-3. Are configuration details provided (ports, users, services)?
-4. Is the information clear and specific enough for automation?
+Validation Criteria (be LENIENT - mark as valid if it has the basics):
+
+MUST HAVE (mark as error if missing):
+- At least 3-5 installation steps or commands (e.g., apt install, systemctl, configuration)
+- Indication of what software/service is being installed
+- Some form of system context (Linux, Ubuntu, CentOS, etc.)
+
+NICE TO HAVE (mark as warning if missing, but still valid):
+- Detailed system requirements (RAM, disk, etc.)
+- Port numbers or networking details
+- Specific version numbers
+- Advanced configuration options
+
+Mark as INVALID (isValid: false) ONLY if:
+- Document is pure marketing content with no installation steps
+- Document is just a features list or FAQ
+- Document contains no actual commands or procedures
 
 Return a JSON object with:
 {
@@ -46,17 +56,12 @@ Return a JSON object with:
   "issues": [
     {
       "severity": "error" | "warning",
-      "message": "Detailed explanation of the issue"
+      "message": "Explanation"
     }
   ]
 }
 
-Be thorough in identifying issues. Common problems:
-- "error": Document is marketing material, feature overview, or FAQ (not installation guide)
-- "error": No installation commands or steps provided
-- "error": System requirements missing or vague
-- "warning": Some configuration details are incomplete
-- "warning": Dependencies listed but versions not specified`;
+If the document has installation commands and basic setup steps, mark it as valid even if it's not perfect. We can generate a basic playbook from basic installation guides.`;
 
   const completion = await openai.chat.completions.create({
     model: "gpt-5",
