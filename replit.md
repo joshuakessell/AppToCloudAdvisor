@@ -4,7 +4,7 @@
 
 CloudForge is an AI-powered infrastructure automation platform that transforms bare-metal installation documentation into cloud deployment playbooks. The platform analyzes installation guides (uploaded files or URLs), validates their completeness, generates dynamic questionnaires to gather deployment parameters, and produces Ansible playbooks for automated deployment on AWS, GCP, and Azure.
 
-The application follows a multi-step workflow: document upload → AI validation → dynamic questionnaire → playbook generation → deployment monitoring → validation checks.
+The application follows a multi-step workflow: document upload → processing animation → AI validation → configuration screen (with help modals and AI auto-complete) → playbook generation → deployment monitoring → validation checks.
 
 ## Current Status (October 23, 2025)
 
@@ -17,6 +17,11 @@ The application follows a multi-step workflow: document upload → AI validation
 - ✅ Ansible playbook generation from user configurations
 - ✅ Dark mode DevOps-inspired UI
 - ✅ Error handling and loading states throughout
+- ✅ Processing screen with animated milestones and typing effects
+- ✅ Unified configuration screen with all fields visible at once
+- ✅ Help icons with detailed explanations and examples for each field
+- ✅ AI-powered auto-complete for configuration fields
+- ✅ Soft copy storage with revert functionality for auto-completed fields
 
 **Security Features:**
 - Domain allowlist for URL fetching (GitHub, GitLab, ReadTheDocs, official docs)
@@ -54,7 +59,15 @@ Preferred communication style: Simple, everyday language.
 **Component Architecture:**
 - Modular component structure in `client/src/components`
 - UI primitives in `client/src/components/ui` (buttons, cards, forms, dialogs, etc.)
-- Feature components for each workflow step (DocumentUpload, ValidationScreen, DynamicQuestionnaire, PlaybookViewer, DeploymentDashboard, ValidationResults)
+- Feature components for each workflow step:
+  - DocumentUpload: File and URL upload interface
+  - ProcessingScreen: Animated milestone tracking with typing effects
+  - ValidationScreen: Document validation results with auto-transition
+  - ConfigurationScreen: Unified configuration form with help modals and AI auto-complete
+  - DynamicQuestionnaire: Legacy step-by-step questionnaire (kept for compatibility)
+  - PlaybookViewer: Generated playbook display and download
+  - DeploymentDashboard: Deployment monitoring interface
+  - ValidationResults: Post-deployment validation checks
 - Shared ThemeProvider context for theme management
 - Toast notifications system for user feedback
 
@@ -76,7 +89,11 @@ Preferred communication style: Simple, everyday language.
 - Routes in `server/routes.ts`:
   - `POST /api/projects/upload` - File upload and project creation
   - `POST /api/projects/url` - URL-based document import
-  - Additional endpoints for analysis, questionnaire generation, and playbook creation
+  - `POST /api/projects/:id/validate` - Document validation
+  - `POST /api/projects/:id/questionnaire` - Generate configuration questions
+  - `POST /api/projects/:id/autocomplete` - AI auto-complete for configuration fields
+  - `POST /api/projects/:id/playbook` - Generate Ansible playbook
+  - `GET /api/projects/:id` - Retrieve project details
 
 **Business Logic:**
 - `server/ai-service.ts` - OpenAI integration for document analysis, questionnaire generation, and playbook creation
@@ -87,7 +104,11 @@ Preferred communication style: Simple, everyday language.
 - Uses Replit's AI Integrations service (OpenAI-compatible API)
 - GPT-5 model for document validation, requirement extraction, and playbook generation
 - Structured prompts for consistent JSON responses
-- Functions: validateDocument, generateQuestionnaire, generatePlaybook
+- Functions:
+  - validateDocument: Analyzes installation guides for completeness
+  - generateQuestionnaire: Creates configuration questions with help text and examples
+  - generatePlaybook: Generates Ansible playbooks from configurations
+  - autoCompleteConfiguration: AI-powered auto-fill for configuration fields based on user descriptions
 
 ### Data Storage
 
