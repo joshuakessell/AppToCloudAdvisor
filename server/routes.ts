@@ -4,13 +4,139 @@ import multer from "multer";
 import { storage } from "./storage";
 import { validateDocument, generateQuestionnaire, generatePlaybook, autoCompleteConfiguration } from "./ai-service";
 import { insertProjectSchema } from "@shared/schema";
+import { ingestGamePackage, GamePackageValidationError } from "./game-package-service";
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
 });
 
+// Separate multer config for game packages (larger limit)
+const gameUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit for game packages
+});
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // ==================== NEW GAMELIFT ROUTES ====================
+  
+  // Upload game package (zip file)
+  app.post("/api/games/upload", gameUpload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      // Validate file type
+      const filename = req.file.originalname.toLowerCase();
+      if (!filename.endsWith('.zip')) {
+        return res.status(400).json({ error: "Only .zip files are accepted" });
+      }
+
+      // Process the game package
+      const packageData = await ingestGamePackage({
+        type: 'zip',
+        buffer: req.file.buffer,
+      });
+
+      // Create game submission
+      const submission = await storage.createGameSubmission({
+        name: req.body.name || filename.replace('.zip', ''),
+        sourceType: 'zip_upload',
+        sourceUrl: null,
+        artifactPath: null, // Could store to object storage later
+        markdownContent: packageData.gameMarkdown,
+        packageMetadata: {
+          fileCount: packageData.packageFiles.length,
+          detectedLanguages: packageData.detectedLanguages,
+        },
+        status: 'uploaded',
+      });
+
+      res.json({
+        ...submission,
+        packageInfo: {
+          fileCount: packageData.packageFiles.length,
+          languages: packageData.detectedLanguages,
+        },
+      });
+    } catch (error: any) {
+      console.error("[Games] Upload error:", error);
+      if (error instanceof GamePackageValidationError) {
+        return res.status(400).json({ error: error.message });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Ingest game from GitHub URL
+  app.post("/api/games/github", async (req, res) => {
+    try {
+      const { url, name } = req.body;
+
+      if (!url) {
+        return res.status(400).json({ error: "GitHub URL is required" });
+      }
+
+      // Validate GitHub URL format
+      if (!url.includes('github.com')) {
+        return res.status(400).json({ error: "Must be a valid GitHub repository URL" });
+      }
+
+      // Process the GitHub repository
+      const packageData = await ingestGamePackage({
+        type: 'github',
+        url,
+      });
+
+      // Create game submission
+      const submission = await storage.createGameSubmission({
+        name: name || url.split('/').pop() || 'Unnamed Game',
+        sourceType: 'github_url',
+        sourceUrl: url,
+        artifactPath: null,
+        markdownContent: packageData.gameMarkdown,
+        packageMetadata: {
+          fileCount: packageData.packageFiles.length,
+          detectedLanguages: packageData.detectedLanguages,
+        },
+        status: 'uploaded',
+      });
+
+      res.json({
+        ...submission,
+        packageInfo: {
+          fileCount: packageData.packageFiles.length,
+          languages: packageData.detectedLanguages,
+        },
+      });
+    } catch (error: any) {
+      console.error("[Games] GitHub ingestion error:", error);
+      if (error instanceof GamePackageValidationError) {
+        return res.status(400).json({ error: error.message });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get game submission
+  app.get("/api/games/:id", async (req, res) => {
+    try {
+      const submission = await storage.getGameSubmission(req.params.id);
+
+      if (!submission) {
+        return res.status(404).json({ error: "Game submission not found" });
+      }
+
+      res.json(submission);
+    } catch (error: any) {
+      console.error("[Games] Get submission error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ==================== LEGACY CLOUDFORGE ROUTES ====================
+  
   // Upload and analyze document
   app.post("/api/projects/upload", upload.single("file"), async (req, res) => {
     try {
