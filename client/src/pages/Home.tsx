@@ -3,19 +3,16 @@ import { Header } from "@/components/Header";
 import { DocumentUpload } from "@/components/DocumentUpload";
 import { ProcessingScreen } from "@/components/ProcessingScreen";
 import { ValidationScreen } from "@/components/ValidationScreen";
-import { ConfigurationScreen } from "@/components/ConfigurationScreen";
-import { DynamicQuestionnaire } from "@/components/DynamicQuestionnaire";
-import { PlaybookViewer } from "@/components/PlaybookViewer";
-import { DeploymentDashboard } from "@/components/DeploymentDashboard";
-import { ValidationResults } from "@/components/ValidationResults";
-import { GameLiftResourceVisualization } from "@/components/GameLiftResourceVisualization";
-import { GameLiftCostSimulator } from "@/components/GameLiftCostSimulator";
+import { ClarifyingQuestions } from "@/components/ClarifyingQuestions";
+import { MigrationPathwayVisualization } from "@/components/MigrationPathwayVisualization";
+import { FeatureSuggestionsDisplay } from "@/components/FeatureSuggestionsDisplay";
+import { MigrationGuideRoadmap } from "@/components/MigrationGuideRoadmap";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
-type Step = "upload" | "processing" | "validating" | "resources" | "configuration" | "questionnaire" | "playbook" | "deploy" | "validate";
+type Step = "upload" | "processing" | "validating" | "clarifying" | "migration-plan" | "pathway" | "features" | "roadmap";
 
 interface ValidationResult {
   isValid: boolean;
@@ -23,18 +20,6 @@ interface ValidationResult {
     severity: "error" | "warning";
     message: string;
   }>;
-}
-
-interface Question {
-  id: string;
-  type: "text" | "select" | "radio" | "checkbox" | "textarea" | "number" | "provider";
-  label: string;
-  description?: string;
-  required: boolean;
-  options?: string[];
-  placeholder?: string;
-  helpText?: string;
-  examples?: string[];
 }
 
 interface ProcessingStep {
@@ -47,68 +32,38 @@ export default function Home() {
   const [currentStep, setCurrentStep] = useState<Step>("upload");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [documentName, setDocumentName] = useState("");
-  const [projectId, setProjectId] = useState<string | null>(null);
+  const [gameId, setGameId] = useState<string | null>(null);
+  const [gameName, setGameName] = useState("");
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [generatedPlaybook, setGeneratedPlaybook] = useState("");
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [processingSteps, setProcessingSteps] = useState<ProcessingStep[]>([]);
-  const [resourcePlan, setResourcePlan] = useState<any>(null);
+  const [comprehensiveAnalysis, setComprehensiveAnalysis] = useState<any>(null);
+  const [migrationPlan, setMigrationPlan] = useState<any>(null);
+  const [featureSuggestions, setFeatureSuggestions] = useState<any>(null);
   const { toast } = useToast();
-
-  const mockValidationChecks = [
-    {
-      id: "1",
-      name: "HTTP Connectivity",
-      status: "passed" as const,
-      message: "Successfully connected to application on port 80"
-    },
-    {
-      id: "2",
-      name: "HTTPS/SSL Certificate",
-      status: "passed" as const,
-      message: "SSL certificate is valid and properly configured"
-    },
-    {
-      id: "3",
-      name: "Database Connection",
-      status: "passed" as const,
-      message: "PostgreSQL database is accessible and responding"
-    },
-    {
-      id: "4",
-      name: "Application Health",
-      status: "warning" as const,
-      message: "Application responding but memory usage is at 85%"
-    },
-    {
-      id: "5",
-      name: "DNS Resolution",
-      status: "passed" as const,
-      message: "Domain name resolves correctly to instance IP"
-    }
-  ];
 
   const handleFileSelect = async (file: File) => {
     try {
       setSelectedFile(file);
+      const name = file.name.replace(/\.zip$/i, "");
       setDocumentName(file.name);
+      setGameName(name);
       setCurrentStep("processing");
 
       const steps: ProcessingStep[] = [
         { id: "upload", message: "Uploading game package and extracting files...", status: "processing" },
         { id: "validate", message: "Validating game.md structure and requirements...", status: "pending" },
-        { id: "ai", message: "Analyzing game architecture with AI...", status: "pending" },
-        { id: "resources", message: "Determining GameLift resource requirements...", status: "pending" },
+        { id: "analyze", message: "Performing comprehensive game analysis...", status: "pending" },
+        { id: "readiness", message: "Assessing AWS GameLift migration readiness...", status: "pending" },
       ];
       setProcessingSteps([...steps]);
 
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("name", file.name.replace(/\.zip$/i, ""));
+      formData.append("name", name);
 
-      const submission = await apiRequest("POST", "/api/game-submissions/upload", formData);
-      setProjectId(submission.id);
+      const submission = await apiRequest("POST", "/api/games/upload", formData);
+      setGameId(submission.id);
+      setGameName(submission.name);
 
       setProcessingSteps(prev => prev.map((s, i) => 
         i === 0 ? { ...s, status: "complete" } : i === 1 ? { ...s, status: "processing" } : s
@@ -119,14 +74,14 @@ export default function Home() {
         i <= 1 ? { ...s, status: "complete" } : i === 2 ? { ...s, status: "processing" } : s
       ));
 
-      // AI analysis
-      const analysis = await apiRequest("POST", `/api/game-submissions/${submission.id}/analyze`);
+      // Comprehensive AI analysis
+      const analysis = await apiRequest("POST", `/api/games/${submission.id}/analyze-comprehensive`);
       
-      if (!analysis || !analysis.resourcePlan) {
-        throw new Error("Analysis failed - no resource plan generated");
+      if (!analysis || !analysis.analysis) {
+        throw new Error("Analysis failed - no comprehensive analysis generated");
       }
 
-      setResourcePlan(analysis.resourcePlan);
+      setComprehensiveAnalysis(analysis.analysis);
       
       setProcessingSteps(prev => prev.map((s, i) => 
         i <= 2 ? { ...s, status: "complete" } : i === 3 ? { ...s, status: "processing" } : s
@@ -140,7 +95,7 @@ export default function Home() {
           isValid: true, 
           issues: [{
             severity: "warning",
-            message: "Resource analysis complete. Review recommendations below."
+            message: `Analysis complete. AWS readiness score: ${analysis.analysis.awsReadiness.readinessScore}/10`
           }]
         });
       }, 500);
@@ -158,21 +113,24 @@ export default function Home() {
   const handleUrlSubmit = async (url: string) => {
     try {
       setDocumentName(url);
+      const name = url.split('/').pop() || 'game';
+      setGameName(name);
       setCurrentStep("processing");
 
       const steps: ProcessingStep[] = [
         { id: "fetch", message: "Cloning GitHub repository...", status: "processing" },
         { id: "validate", message: "Validating game.md structure and requirements...", status: "pending" },
-        { id: "ai", message: "Analyzing game architecture with AI...", status: "pending" },
-        { id: "resources", message: "Determining GameLift resource requirements...", status: "pending" },
+        { id: "analyze", message: "Performing comprehensive game analysis...", status: "pending" },
+        { id: "readiness", message: "Assessing AWS GameLift migration readiness...", status: "pending" },
       ];
       setProcessingSteps([...steps]);
 
-      const submission = await apiRequest("POST", "/api/game-submissions/github", {
-        githubUrl: url,
-        name: url.split('/').pop() || 'game',
+      const submission = await apiRequest("POST", "/api/games/github", {
+        url,
+        name,
       });
-      setProjectId(submission.id);
+      setGameId(submission.id);
+      setGameName(submission.name);
 
       setProcessingSteps(prev => prev.map((s, i) => 
         i === 0 ? { ...s, status: "complete" } : i === 1 ? { ...s, status: "processing" } : s
@@ -183,14 +141,14 @@ export default function Home() {
         i <= 1 ? { ...s, status: "complete" } : i === 2 ? { ...s, status: "processing" } : s
       ));
 
-      // AI analysis
-      const analysis = await apiRequest("POST", `/api/game-submissions/${submission.id}/analyze`);
+      // Comprehensive AI analysis
+      const analysis = await apiRequest("POST", `/api/games/${submission.id}/analyze-comprehensive`);
       
-      if (!analysis || !analysis.resourcePlan) {
-        throw new Error("Analysis failed - no resource plan generated");
+      if (!analysis || !analysis.analysis) {
+        throw new Error("Analysis failed - no comprehensive analysis generated");
       }
 
-      setResourcePlan(analysis.resourcePlan);
+      setComprehensiveAnalysis(analysis.analysis);
       
       setProcessingSteps(prev => prev.map((s, i) => 
         i <= 2 ? { ...s, status: "complete" } : i === 3 ? { ...s, status: "processing" } : s
@@ -204,7 +162,7 @@ export default function Home() {
           isValid: true, 
           issues: [{
             severity: "warning",
-            message: "Resource analysis complete. Review recommendations below."
+            message: `Analysis complete. AWS readiness score: ${analysis.analysis.awsReadiness.readinessScore}/10`
           }]
         });
       }, 500);
@@ -219,74 +177,64 @@ export default function Home() {
     }
   };
 
-  const handleProceedToConfiguration = () => {
-    setCurrentStep("resources");
+  const handleProceedToClarifying = () => {
+    setCurrentStep("clarifying");
   };
 
-  const handleProceedToSimulator = () => {
-    setCurrentStep("configuration");
-  };
-
-  const handleCostCalculation = async (params: any) => {
+  const handleClarifyingComplete = async (responses: any) => {
     try {
-      if (!resourcePlan) return;
+      if (!gameId) return;
 
-      toast({
-        title: "Calculating Costs",
-        description: "Generating detailed cost breakdown...",
-      });
-
-      const result = await apiRequest("POST", `/api/resource-plans/${resourcePlan.id}/calculate-costs`, params);
+      setCurrentStep("migration-plan");
       
       toast({
-        title: "Costs Calculated",
-        description: `Initial: $${result.costs.total.initialSetup} | Monthly: $${result.costs.total.monthlyOperational}`,
+        title: "Generating Migration Plan",
+        description: "Creating personalized AWS GameLift migration roadmap...",
       });
 
-      // You could transition to a cost results screen here
-      console.log("Cost calculation result:", result);
-    } catch (error: any) {
-      console.error("Cost calculation error:", error);
+      // Generate migration recommendations
+      const migrationResult = await apiRequest("POST", `/api/games/${gameId}/generate-migration-plan`);
+      
+      if (!migrationResult || !migrationResult.recommendations) {
+        throw new Error("Failed to generate migration recommendations");
+      }
+
+      setMigrationPlan(migrationResult.recommendations);
+
       toast({
-        title: "Calculation Failed",
-        description: error.message || "Failed to calculate costs",
+        title: "Migration Plan Ready",
+        description: "Your personalized AWS migration pathway has been generated",
+      });
+
+      // Generate feature suggestions
+      const featureResult = await apiRequest("POST", `/api/games/${gameId}/generate-feature-suggestions`);
+      
+      if (featureResult && featureResult.suggestions) {
+        setFeatureSuggestions(featureResult.suggestions);
+      }
+
+      // Move to pathway visualization
+      setCurrentStep("pathway");
+    } catch (error: any) {
+      console.error("Migration plan generation error:", error);
+      toast({
+        title: "Plan Generation Failed",
+        description: error.message || "Failed to generate migration plan",
         variant: "destructive",
       });
     }
   };
 
-  const handleQuestionnaireSubmit = async (answers: Record<string, any>) => {
-    try {
-      if (!projectId) return;
+  const handleViewFeatures = () => {
+    setCurrentStep("features");
+  };
 
-      toast({
-        title: "Generating Playbook",
-        description: "Creating your customized Ansible playbook...",
-      });
-
-      const result = await apiRequest("POST", `/api/projects/${projectId}/playbook`, {
-        answers,
-      });
-
-      setGeneratedPlaybook(result.playbook);
-      setCurrentStep("playbook");
-
-      toast({
-        title: "Playbook Generated",
-        description: "Your Ansible playbook is ready for download and deployment",
-      });
-    } catch (error: any) {
-      console.error("Playbook generation error:", error);
-      toast({
-        title: "Playbook Generation Failed",
-        description: error.message || "Failed to generate playbook",
-        variant: "destructive",
-      });
-    }
+  const handleViewRoadmap = () => {
+    setCurrentStep("roadmap");
   };
 
   const handleBack = () => {
-    const steps: Step[] = ["upload", "processing", "validating", "resources", "configuration", "questionnaire", "playbook", "deploy", "validate"];
+    const steps: Step[] = ["upload", "processing", "validating", "clarifying", "migration-plan", "pathway", "features", "roadmap"];
     const currentIndex = steps.indexOf(currentStep);
     if (currentIndex > 0) {
       setCurrentStep(steps[currentIndex - 1]);
@@ -296,14 +244,17 @@ export default function Home() {
   const handleRetryValidation = () => {
     setCurrentStep("upload");
     setValidationResult(null);
-    setProjectId(null);
+    setGameId(null);
+    setComprehensiveAnalysis(null);
+    setMigrationPlan(null);
+    setFeatureSuggestions(null);
   };
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="container mx-auto px-6 py-12">
-        {currentStep !== "upload" && (
+      <main className="container mx-auto px-6 py-12 max-w-7xl">
+        {currentStep !== "upload" && currentStep !== "processing" && (
           <Button
             variant="ghost"
             onClick={handleBack}
@@ -319,11 +270,11 @@ export default function Home() {
           <div className="space-y-8">
             <div className="text-center max-w-3xl mx-auto mb-12">
               <h1 className="text-4xl font-bold mb-4">
-                Transform Installation Guides into Cloud Deployments
+                AWS GameLift Migration Consultant
               </h1>
               <p className="text-xl text-muted-foreground">
-                Upload your bare-metal installation guide or provide a documentation URL and let AI generate production-ready
-                Ansible playbooks for AWS, GCP, or Azure
+                Upload your game package or provide a GitHub repository URL and let AI guide you through 
+                migrating to AWS GameLift with personalized recommendations
               </p>
             </div>
             <DocumentUpload 
@@ -347,51 +298,75 @@ export default function Home() {
             documentName={documentName}
             issues={validationResult?.issues || []}
             onRetry={handleRetryValidation}
-            onContinue={handleProceedToConfiguration}
+            onContinue={handleProceedToClarifying}
           />
         )}
 
-        {currentStep === "resources" && resourcePlan && (
-          <GameLiftResourceVisualization
-            resourcePlan={resourcePlan}
-            onProceedToSimulator={handleProceedToSimulator}
+        {currentStep === "clarifying" && gameId && (
+          <ClarifyingQuestions
+            gameId={gameId}
+            gameName={gameName}
+            onComplete={handleClarifyingComplete}
+            comprehensiveAnalysis={comprehensiveAnalysis}
           />
         )}
 
-        {currentStep === "configuration" && resourcePlan && (
-          <GameLiftCostSimulator
-            resourcePlanId={resourcePlan.id}
-            defaultInstanceType={resourcePlan.fleetConfig?.instanceType || "c5.large"}
-            onCalculate={handleCostCalculation}
-          />
+        {currentStep === "migration-plan" && (
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+              <h3 className="text-xl font-semibold">Generating Your Migration Plan...</h3>
+              <p className="text-muted-foreground mt-2">
+                Analyzing your responses and creating personalized AWS GameLift recommendations
+              </p>
+            </div>
+          </div>
         )}
 
-        {currentStep === "questionnaire" && questions.length > 0 && (
-          <DynamicQuestionnaire
-            questions={questions}
-            onSubmit={handleQuestionnaireSubmit}
-          />
+        {currentStep === "pathway" && migrationPlan && (
+          <div className="space-y-6">
+            <MigrationPathwayVisualization migrationPlan={migrationPlan} />
+            
+            <div className="flex justify-between items-center pt-6 border-t">
+              {featureSuggestions && (
+                <Button
+                  onClick={handleViewFeatures}
+                  variant="outline"
+                  data-testid="button-view-features"
+                >
+                  View Feature Suggestions
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              )}
+              <Button
+                onClick={handleViewRoadmap}
+                data-testid="button-view-roadmap"
+              >
+                View Migration Roadmap
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         )}
 
-        {currentStep === "playbook" && (
-          <PlaybookViewer
-            playbook={generatedPlaybook}
-            onDeploy={() => setCurrentStep("deploy")}
-          />
+        {currentStep === "features" && featureSuggestions && (
+          <div className="space-y-6">
+            <FeatureSuggestionsDisplay suggestions={featureSuggestions} />
+            
+            <div className="flex justify-end pt-6 border-t">
+              <Button
+                onClick={handleViewRoadmap}
+                data-testid="button-view-roadmap-from-features"
+              >
+                View Migration Roadmap
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         )}
 
-        {currentStep === "deploy" && (
-          <DeploymentDashboard
-            onValidate={() => setCurrentStep("validate")}
-          />
-        )}
-
-        {currentStep === "validate" && (
-          <ValidationResults
-            checks={mockValidationChecks}
-            onFinalize={() => console.log("Deployment finalized")}
-            onRetry={() => setCurrentStep("deploy")}
-          />
+        {currentStep === "roadmap" && migrationPlan && (
+          <MigrationGuideRoadmap migrationPlan={migrationPlan} />
         )}
       </main>
     </div>
