@@ -6,6 +6,7 @@ import { validateDocument, generateQuestionnaire, generatePlaybook, autoComplete
 import { insertProjectSchema } from "@shared/schema";
 import { ingestGamePackage, GamePackageValidationError } from "./game-package-service";
 import { analyzeGameForGameLift, validateResourcePlan } from "./gamelift-ai-service";
+import { calculateCosts, generateCostScenarios, type CostParameters } from "./cost-calculator";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -207,6 +208,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(plan);
     } catch (error: any) {
       console.error("[Games] Get resource plan error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Calculate costs for a resource plan
+  app.post("/api/resource-plans/:planId/calculate-costs", async (req, res) => {
+    try {
+      const plan = await storage.getResourcePlan(req.params.planId);
+
+      if (!plan) {
+        return res.status(404).json({ error: "Resource plan not found" });
+      }
+
+      const {
+        concurrentPlayers = 1000,
+        sessionDurationHours = 2,
+        regionsCount = 1,
+        region = 'us-east-1',
+        storageGB = 10,
+        monthlyDataTransferGB = 100,
+      } = req.body;
+
+      // Extract instance type from fleet config
+      const fleetConfig = plan.fleetConfig as any;
+      const instanceType = fleetConfig?.instanceTypes?.[0] || 'c5.large';
+      const fleetType = fleetConfig?.fleetType || 'on-demand';
+
+      const params: CostParameters = {
+        concurrentPlayers,
+        sessionDurationHours,
+        regionsCount,
+        instanceType,
+        fleetType,
+        storageGB,
+        monthlyDataTransferGB,
+      };
+
+      const costs = await calculateCosts(params, region);
+
+      // Create cost simulation
+      const simulation = await storage.createCostSimulation({
+        resourcePlanId: plan.id,
+        concurrentPlayers: params.concurrentPlayers,
+        sessionDurationMinutes: params.sessionDurationHours * 60,
+        regions: [region],
+        instanceFamily: params.instanceType.split('.')[0], // Extract family (e.g., c5 from c5.large)
+        calculatedInitialCost: costs.total.initialSetup.toFixed(2),
+        calculatedMonthlyCost: costs.total.monthlyOperational.toFixed(2),
+        costBreakdown: costs,
+      });
+
+      res.json({
+        simulation,
+        costs,
+      });
+    } catch (error: any) {
+      console.error("[Games] Cost calculation error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Generate cost scenarios for a resource plan
+  app.post("/api/resource-plans/:planId/scenarios", async (req, res) => {
+    try {
+      const plan = await storage.getResourcePlan(req.params.planId);
+
+      if (!plan) {
+        return res.status(404).json({ error: "Resource plan not found" });
+      }
+
+      const {
+        regionsCount = 1,
+        region = 'us-east-1',
+        storageGB = 10,
+        monthlyDataTransferGB = 100,
+      } = req.body;
+
+      // Extract instance type from fleet config
+      const fleetConfig = plan.fleetConfig as any;
+      const instanceType = fleetConfig?.instanceTypes?.[0] || 'c5.large';
+      const fleetType = fleetConfig?.fleetType || 'on-demand';
+
+      const baseParams = {
+        regionsCount,
+        instanceType,
+        fleetType,
+        storageGB,
+        monthlyDataTransferGB,
+      };
+
+      const scenarios = await generateCostScenarios(baseParams, region);
+
+      res.json({ scenarios });
+    } catch (error: any) {
+      console.error("[Games] Scenario generation error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get cost simulations for a resource plan
+  app.get("/api/resource-plans/:planId/simulations", async (req, res) => {
+    try {
+      const simulations = await storage.listCostSimulationsByPlanId(req.params.planId);
+      res.json({ simulations });
+    } catch (error: any) {
+      console.error("[Games] Get simulations error:", error);
       res.status(500).json({ error: error.message });
     }
   });
