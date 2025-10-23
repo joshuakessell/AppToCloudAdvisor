@@ -14,6 +14,7 @@ The application follows a multi-step workflow: document upload → processing an
 - ✅ OpenAI GPT-5 integration for AI-powered analysis
 - ✅ Document validation with detailed error reporting
 - ✅ Dynamic questionnaire generation based on document analysis
+- ✅ Cloud platform selection as first question (AWS/GCP/Azure/Cloud Agnostic)
 - ✅ Ansible playbook generation from user configurations
 - ✅ Dark mode DevOps-inspired UI
 - ✅ Error handling and loading states throughout

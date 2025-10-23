@@ -8,13 +8,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Cloud, CloudCog, Cloudy, HelpCircle, RotateCcw, Sparkles } from "lucide-react";
+import { HelpCircle, RotateCcw, Sparkles } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 interface Question {
   id: string;
-  type: "text" | "select" | "radio" | "checkbox" | "textarea" | "number" | "provider";
+  type: "text" | "select" | "radio" | "checkbox" | "textarea" | "number";
   label: string;
   description?: string;
   required: boolean;
@@ -218,32 +218,6 @@ export function ConfigurationScreen({ questions, projectId, onSubmit }: Configur
                     {option}
                   </Label>
                 </div>
-              ))}
-            </div>
-          );
-
-        case "provider":
-          return (
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { value: "aws", label: "AWS", Icon: Cloud },
-                { value: "gcp", label: "GCP", Icon: CloudCog },
-                { value: "azure", label: "Azure", Icon: Cloudy },
-              ].map(({ value: providerValue, label, Icon }) => (
-                <button
-                  key={providerValue}
-                  type="button"
-                  onClick={() => handleAnswer(question.id, providerValue)}
-                  className={`flex flex-col items-center gap-2 p-4 border rounded-lg hover-elevate active-elevate-2 transition-colors ${
-                    value === providerValue
-                      ? "border-primary bg-primary/10"
-                      : "border-border"
-                  }`}
-                  data-testid={`button-provider-${providerValue}`}
-                >
-                  <Icon className="h-8 w-8" />
-                  <span className="text-sm font-medium">{label}</span>
-                </button>
               ))}
             </div>
           );

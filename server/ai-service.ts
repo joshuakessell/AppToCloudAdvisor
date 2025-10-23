@@ -83,26 +83,37 @@ Document: ${documentName}
 Content:
 ${content.substring(0, 15000)} ${content.length > 15000 ? '...[truncated]' : ''}
 
-Generate a questionnaire with questions needed to create an Ansible playbook. Extract requirements from the document (e.g., if PostgreSQL 14 is mentioned, ask how to provision it).
+Generate a questionnaire with questions needed to create an Ansible playbook. Extract requirements from the document (e.g., if PostgreSQL 14 is mentioned, ask about database configuration).
 
-Always include these base questions:
-1. Cloud provider selection (AWS/GCP/Azure)
-2. Deployment region
-3. Initial instance count
-4. Auto-scaling preference
+IMPORTANT: You MUST generate a MINIMUM of 5-8 questions total. The system will automatically add the cloud platform question as the first question, so generate the OTHER questions.
 
-Then add document-specific questions based on:
-- Database requirements (if mentioned)
-- Application server configuration
-- Optional features (monitoring, backups, SSL)
-- Custom parameters from the documentation
+Generate these types of questions:
+1. Deployment region (e.g., us-east-1, us-west-2, europe-west1)
+2. Instance/server specifications (size, count)
+3. Auto-scaling configuration
+4. Database-specific questions if applicable (version, name, credentials)
+5. Application-specific configurations from the documentation
+6. Security settings (SSL, firewall rules, etc.)
+7. Monitoring and logging preferences
+8. Backup and disaster recovery options
+
+For a PostgreSQL installation document, for example, you should ask:
+- Deployment region
+- Instance type/size  
+- Number of instances
+- PostgreSQL version
+- Database name
+- Initial database size
+- Auto-scaling enabled?
+- Backup retention period
+- Monitoring preferences
 
 Return a JSON object with a "questions" array:
 {
   "questions": [
     {
       "id": "unique_id",
-      "type": "provider" | "select" | "radio" | "checkbox" | "text" | "number" | "textarea",
+      "type": "select" | "radio" | "checkbox" | "text" | "number" | "textarea",
       "label": "Question text",
       "description": "Brief helpful description",
       "required": true/false,
@@ -119,8 +130,7 @@ IMPORTANT: For EVERY question, provide:
 2. examples: 2-3 concrete, realistic examples of valid inputs
 
 Question type guide:
-- provider: for cloud provider selection (AWS/GCP/Azure)
-- select: single choice from dropdown
+- select: single choice from dropdown (USE THIS FOR CLOUD PLATFORM)
 - radio: single choice with visible options
 - checkbox: multiple selections
 - number: numeric input
@@ -136,12 +146,36 @@ Question type guide:
 
   const result = JSON.parse(completion.choices[0].message.content || "{}");
   
-  // Handle both array and object responses
-  if (Array.isArray(result)) {
-    return result as Question[];
-  }
+  // Debug logging
+  console.log('[AI Service] Questionnaire generation result:', JSON.stringify(result, null, 2));
   
-  return result.questions || [];
+  // Handle both array and object responses
+  let questions = Array.isArray(result) ? result : (result.questions || []);
+  
+  console.log('[AI Service] Questions before cloud platform injection:', questions.length, 'questions');
+  
+  // Ensure cloud platform is always the first question
+  const cloudPlatformQuestion = {
+    id: "cloud_platform",
+    type: "select" as const,
+    label: "Target Cloud Platform",
+    description: "Select the cloud platform where you want to deploy this application",
+    required: true,
+    options: ["AWS", "GCP", "Azure", "Cloud Agnostic"],
+    helpText: "Choose the cloud provider for your deployment. AWS (Amazon Web Services), GCP (Google Cloud Platform), and Azure (Microsoft Azure) are major cloud providers. Select 'Cloud Agnostic' if you want a generic playbook that can work across multiple platforms or on-premise servers.",
+    examples: ["AWS for using EC2 and RDS", "GCP for using Compute Engine", "Azure for using Virtual Machines", "Cloud Agnostic for multi-cloud or on-premise deployment"]
+  };
+  
+  // Remove any existing cloud platform question with matching ID only
+  // Don't filter by label to avoid removing questions like "Cloud Region"
+  questions = questions.filter((q: any) => q.id !== 'cloud_platform');
+  
+  // Add cloud platform as the first question
+  questions.unshift(cloudPlatformQuestion);
+  
+  console.log('[AI Service] Final questions count:', questions.length);
+  
+  return questions;
 }
 
 export async function generatePlaybook(
