@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Header } from "@/components/Header";
 import { DocumentUpload } from "@/components/DocumentUpload";
 import { ProcessingScreen } from "@/components/ProcessingScreen";
 import { ValidationScreen } from "@/components/ValidationScreen";
+import { ResultsPage } from "@/components/ResultsPage";
 import { ClarifyingQuestions } from "@/components/ClarifyingQuestions";
 import { MigrationPathwayVisualization } from "@/components/MigrationPathwayVisualization";
 import { FeatureSuggestionsDisplay } from "@/components/FeatureSuggestionsDisplay";
@@ -14,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { fadeIn, fadeInUp, slideInFromRight } from "@/lib/animations";
 
-type Step = "upload" | "processing" | "validating" | "clarifying" | "migration-plan" | "pathway" | "features" | "roadmap";
+type Step = "upload" | "processing" | "validating" | "results" | "clarifying" | "migration-plan" | "pathway" | "features" | "roadmap";
 
 interface ValidationResult {
   isValid: boolean;
@@ -39,9 +40,26 @@ export default function Home() {
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [processingSteps, setProcessingSteps] = useState<ProcessingStep[]>([]);
   const [comprehensiveAnalysis, setComprehensiveAnalysis] = useState<any>(null);
+  const [additionalScans, setAdditionalScans] = useState<any[]>([]);
   const [migrationPlan, setMigrationPlan] = useState<any>(null);
   const [featureSuggestions, setFeatureSuggestions] = useState<any>(null);
   const { toast } = useToast();
+
+  // Fetch existing scans when navigating to results page
+  useEffect(() => {
+    const fetchScans = async () => {
+      if (gameId && currentStep === "results") {
+        try {
+          const scans = await apiRequest("GET", `/api/games/${gameId}/scans`);
+          setAdditionalScans(scans || []);
+        } catch (error) {
+          console.error("Failed to fetch scans:", error);
+        }
+      }
+    };
+
+    fetchScans();
+  }, [gameId, currentStep]);
 
   const handleFileSelect = async (file: File) => {
     try {
@@ -92,7 +110,7 @@ export default function Home() {
       setProcessingSteps(prev => prev.map(s => ({ ...s, status: "complete" })));
       
       setTimeout(() => {
-        setCurrentStep("validating");
+        setCurrentStep("results");
         setValidationResult({ 
           isValid: true, 
           issues: [{
@@ -159,7 +177,7 @@ export default function Home() {
       setProcessingSteps(prev => prev.map(s => ({ ...s, status: "complete" })));
       
       setTimeout(() => {
-        setCurrentStep("validating");
+        setCurrentStep("results");
         setValidationResult({ 
           isValid: true, 
           issues: [{
@@ -236,7 +254,7 @@ export default function Home() {
   };
 
   const handleBack = () => {
-    const steps: Step[] = ["upload", "processing", "validating", "clarifying", "migration-plan", "pathway", "features", "roadmap"];
+    const steps: Step[] = ["upload", "processing", "validating", "results", "clarifying", "migration-plan", "pathway", "features", "roadmap"];
     const currentIndex = steps.indexOf(currentStep);
     if (currentIndex > 0) {
       setCurrentStep(steps[currentIndex - 1]);
@@ -248,8 +266,120 @@ export default function Home() {
     setValidationResult(null);
     setGameId(null);
     setComprehensiveAnalysis(null);
+    setAdditionalScans([]);
     setMigrationPlan(null);
     setFeatureSuggestions(null);
+  };
+
+  const handleRunScan = async (scanType: string) => {
+    try {
+      if (!gameId) return;
+
+      toast({
+        title: "Starting Scan",
+        description: `Running ${scanType.replace('_', ' ')} analysis...`,
+      });
+
+      // Create scan entry with "running" status
+      const scanResult = await apiRequest("POST", `/api/games/${gameId}/scans`, {
+        scanType,
+        status: "running"
+      });
+
+      // Update local state to show scan is running
+      setAdditionalScans(prev => [...prev.filter(s => s.scanType !== scanType), scanResult]);
+
+      // Simulate scan execution (placeholder - actual scan logic in next tasks)
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Update scan to completed status
+      const completedScan = await apiRequest("PATCH", `/api/games/${gameId}/scans/${scanResult.id}`, {
+        status: "completed",
+        score: 75.5, // Placeholder score
+        scanResults: {
+          summary: `${scanType} scan completed successfully`,
+          findings: [],
+        },
+        recommendations: [
+          {
+            title: "Sample Recommendation",
+            description: "This is a placeholder recommendation",
+            priority: "medium"
+          }
+        ],
+        metadata: {
+          duration: "2s",
+          timestamp: new Date().toISOString()
+        }
+      });
+
+      // Update local state with completed scan
+      setAdditionalScans(prev => [...prev.filter(s => s.scanType !== scanType), completedScan]);
+      
+      toast({
+        title: "Scan Complete",
+        description: `${scanType.replace('_', ' ')} analysis finished successfully`,
+      });
+    } catch (error: any) {
+      console.error("Scan error:", error);
+      
+      // Try to update scan to failed status if it exists
+      try {
+        const existingScan = additionalScans.find(s => s.scanType === scanType);
+        if (existingScan && gameId) {
+          await apiRequest("PATCH", `/api/games/${gameId}/scans/${existingScan.id}`, {
+            status: "failed",
+            metadata: {
+              error: error.message
+            }
+          });
+        }
+      } catch (updateError) {
+        console.error("Failed to update scan status:", updateError);
+      }
+      
+      toast({
+        title: "Scan Failed",
+        description: error.message || "Failed to run scan",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleExportResults = () => {
+    if (!gameId || !comprehensiveAnalysis) {
+      toast({
+        title: "Export Failed",
+        description: "No results to export",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const exportData = {
+      gameId,
+      gameName,
+      exportDate: new Date().toISOString(),
+      comprehensiveAnalysis,
+      additionalScans,
+      migrationPlan,
+      featureSuggestions
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${gameName}-analysis-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Export Successful",
+      description: "Analysis results have been downloaded",
+    });
   };
 
   return (
@@ -334,6 +464,25 @@ export default function Home() {
                 issues={validationResult?.issues || []}
                 onRetry={handleRetryValidation}
                 onContinue={handleProceedToClarifying}
+              />
+            </motion.div>
+          )}
+
+          {currentStep === "results" && gameId && comprehensiveAnalysis && (
+            <motion.div
+              key="results"
+              variants={slideInFromRight}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+            >
+              <ResultsPage
+                gameId={gameId}
+                gameName={gameName}
+                comprehensiveAnalysis={comprehensiveAnalysis}
+                additionalScans={additionalScans}
+                onRunScan={handleRunScan}
+                onExport={handleExportResults}
               />
             </motion.div>
           )}

@@ -435,6 +435,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== ADDITIONAL SCANS ROUTES ====================
+  
+  // Get all scans for a game
+  app.get("/api/games/:id/scans", async (req, res) => {
+    try {
+      const scans = await storage.listAdditionalScansBySubmissionId(req.params.id);
+      res.json(scans);
+    } catch (error: any) {
+      console.error("[Scans] List scans error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create a new scan
+  app.post("/api/games/:id/scans", async (req, res) => {
+    try {
+      const { scanType, status } = req.body;
+
+      if (!scanType) {
+        return res.status(400).json({ error: "scanType is required" });
+      }
+
+      // Check if scan already exists
+      const existingScan = await storage.getAdditionalScanByType(req.params.id, scanType);
+      if (existingScan) {
+        return res.status(400).json({ error: "Scan of this type already exists for this game" });
+      }
+
+      // Create scan entry
+      const scan = await storage.createAdditionalScan({
+        gameSubmissionId: req.params.id,
+        scanType,
+        status: status || 'pending',
+      });
+
+      res.json(scan);
+    } catch (error: any) {
+      console.error("[Scans] Create scan error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get a specific scan
+  app.get("/api/games/:id/scans/:scanId", async (req, res) => {
+    try {
+      const scan = await storage.getAdditionalScan(req.params.scanId);
+
+      if (!scan || scan.gameSubmissionId !== req.params.id) {
+        return res.status(404).json({ error: "Scan not found" });
+      }
+
+      res.json(scan);
+    } catch (error: any) {
+      console.error("[Scans] Get scan error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update a scan
+  app.patch("/api/games/:id/scans/:scanId", async (req, res) => {
+    try {
+      const scan = await storage.getAdditionalScan(req.params.scanId);
+
+      if (!scan || scan.gameSubmissionId !== req.params.id) {
+        return res.status(404).json({ error: "Scan not found" });
+      }
+
+      const updated = await storage.updateAdditionalScan(req.params.scanId, {
+        ...req.body,
+        completedAt: req.body.status === 'completed' ? new Date() : scan.completedAt,
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("[Scans] Update scan error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Calculate costs for a resource plan
   app.post("/api/resource-plans/:planId/calculate-costs", async (req, res) => {
     try {
