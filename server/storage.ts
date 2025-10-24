@@ -14,7 +14,9 @@ import {
   type MigrationRecommendation,
   type InsertMigrationRecommendation,
   type FeatureSuggestion,
-  type InsertFeatureSuggestion
+  type InsertFeatureSuggestion,
+  type AdditionalScan,
+  type InsertAdditionalScan
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -62,6 +64,13 @@ export interface IStorage {
   createFeatureSuggestion(suggestion: InsertFeatureSuggestion): Promise<FeatureSuggestion>;
   updateFeatureSuggestion(id: string, updates: Partial<InsertFeatureSuggestion>): Promise<FeatureSuggestion | undefined>;
 
+  // Additional scan methods
+  getAdditionalScan(id: string): Promise<AdditionalScan | undefined>;
+  listAdditionalScansBySubmissionId(submissionId: string): Promise<AdditionalScan[]>;
+  getAdditionalScanByType(submissionId: string, scanType: string): Promise<AdditionalScan | undefined>;
+  createAdditionalScan(scan: InsertAdditionalScan): Promise<AdditionalScan>;
+  updateAdditionalScan(id: string, updates: Partial<InsertAdditionalScan>): Promise<AdditionalScan | undefined>;
+
   // Legacy project methods (for backward compatibility)
   getProject(id: string): Promise<Project | undefined>;
   createProject(project: InsertProject): Promise<Project>;
@@ -77,6 +86,7 @@ export class MemStorage implements IStorage {
   private clarifyingResponses: Map<string, ClarifyingResponse>;
   private migrationRecommendations: Map<string, MigrationRecommendation>;
   private featureSuggestions: Map<string, FeatureSuggestion>;
+  private additionalScans: Map<string, AdditionalScan>;
   private projects: Map<string, Project>; // Legacy
 
   constructor() {
@@ -87,6 +97,7 @@ export class MemStorage implements IStorage {
     this.clarifyingResponses = new Map();
     this.migrationRecommendations = new Map();
     this.featureSuggestions = new Map();
+    this.additionalScans = new Map();
     this.projects = new Map();
   }
 
@@ -360,6 +371,55 @@ export class MemStorage implements IStorage {
     };
 
     this.featureSuggestions.set(id, updated);
+    return updated;
+  }
+
+  // Additional Scan Methods
+  async getAdditionalScan(id: string): Promise<AdditionalScan | undefined> {
+    return this.additionalScans.get(id);
+  }
+
+  async listAdditionalScansBySubmissionId(submissionId: string): Promise<AdditionalScan[]> {
+    return Array.from(this.additionalScans.values()).filter(
+      (scan) => scan.gameSubmissionId === submissionId
+    );
+  }
+
+  async getAdditionalScanByType(submissionId: string, scanType: string): Promise<AdditionalScan | undefined> {
+    return Array.from(this.additionalScans.values()).find(
+      (scan) => scan.gameSubmissionId === submissionId && scan.scanType === scanType
+    );
+  }
+
+  async createAdditionalScan(insertScan: InsertAdditionalScan): Promise<AdditionalScan> {
+    const id = randomUUID();
+    const scan: AdditionalScan = {
+      ...insertScan,
+      id,
+      status: insertScan.status || "pending",
+      scanResults: insertScan.scanResults || null,
+      score: insertScan.score || null,
+      recommendations: insertScan.recommendations || null,
+      metadata: insertScan.metadata || null,
+      completedAt: insertScan.completedAt || null,
+      createdAt: new Date(),
+    };
+    this.additionalScans.set(id, scan);
+    return scan;
+  }
+
+  async updateAdditionalScan(id: string, updates: Partial<InsertAdditionalScan>): Promise<AdditionalScan | undefined> {
+    const scan = this.additionalScans.get(id);
+    if (!scan) return undefined;
+
+    const updated: AdditionalScan = {
+      ...scan,
+      ...updates,
+      id: scan.id,
+      createdAt: scan.createdAt,
+    };
+
+    this.additionalScans.set(id, updated);
     return updated;
   }
 

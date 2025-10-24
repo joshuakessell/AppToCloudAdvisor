@@ -95,6 +95,20 @@ export const featureSuggestions = pgTable("feature_suggestions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Additional scans - incremental scan results for cost, security, performance, etc.
+export const additionalScans = pgTable("additional_scans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  gameSubmissionId: varchar("game_submission_id").notNull().references(() => gameSubmissions.id),
+  scanType: text("scan_type").notNull(), // 'cost_optimization', 'security', 'performance', 'code_quality', 'devops_readiness'
+  status: text("status").notNull().default("pending"), // pending, running, completed, failed
+  scanResults: jsonb("scan_results"), // Detailed scan output
+  score: numeric("score", { precision: 5, scale: 2 }), // Optional score (0-100)
+  recommendations: jsonb("recommendations"), // Array of actionable recommendations
+  metadata: jsonb("metadata"), // Additional metadata (tool versions, scan duration, etc.)
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+});
+
 // Insert schemas for validation
 export const insertGameSubmissionSchema = createInsertSchema(gameSubmissions).omit({
   id: true,
@@ -131,6 +145,14 @@ export const insertFeatureSuggestionSchema = createInsertSchema(featureSuggestio
   createdAt: true,
 });
 
+export const insertAdditionalScanSchema = createInsertSchema(additionalScans).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  scanType: z.enum(['cost_optimization', 'security', 'performance', 'code_quality', 'devops_readiness']),
+  status: z.enum(['pending', 'running', 'completed', 'failed']).optional(),
+});
+
 // Type exports
 export type InsertGameSubmission = z.infer<typeof insertGameSubmissionSchema>;
 export type GameSubmission = typeof gameSubmissions.$inferSelect;
@@ -152,6 +174,9 @@ export type MigrationRecommendation = typeof migrationRecommendations.$inferSele
 
 export type InsertFeatureSuggestion = z.infer<typeof insertFeatureSuggestionSchema>;
 export type FeatureSuggestion = typeof featureSuggestions.$inferSelect;
+
+export type InsertAdditionalScan = z.infer<typeof insertAdditionalScanSchema>;
+export type AdditionalScan = typeof additionalScans.$inferSelect;
 
 // Legacy tables (deprecated - keep for migration compatibility)
 export const projects = pgTable("projects", {
