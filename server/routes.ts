@@ -514,6 +514,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Execute a scan
+  app.post("/api/games/:id/scans/:scanId/execute", async (req, res) => {
+    try {
+      const scan = await storage.getAdditionalScan(req.params.scanId);
+
+      if (!scan || scan.gameSubmissionId !== req.params.id) {
+        return res.status(404).json({ error: "Scan not found" });
+      }
+
+      if (scan.status !== 'pending' && scan.status !== 'running') {
+        return res.status(400).json({ error: "Scan is not in a runnable state" });
+      }
+
+      // Update scan to running status
+      await storage.updateAdditionalScan(req.params.scanId, {
+        status: 'running',
+      });
+
+      // Execute the appropriate scan based on type
+      let scanResult;
+      
+      switch (scan.scanType) {
+        case 'cost_optimization':
+          const { executeCostOptimizationScan } = await import('./scan-cost-optimization');
+          scanResult = await executeCostOptimizationScan(req.params.id);
+          break;
+        
+        case 'security':
+          // TODO: Implement security scan
+          throw new Error('Security scan not yet implemented');
+        
+        case 'performance':
+          // TODO: Implement performance scan
+          throw new Error('Performance scan not yet implemented');
+        
+        case 'code_quality':
+          // TODO: Implement code quality scan
+          throw new Error('Code quality scan not yet implemented');
+        
+        case 'devops_readiness':
+          // TODO: Implement devops readiness scan
+          throw new Error('DevOps readiness scan not yet implemented');
+        
+        default:
+          throw new Error(`Unknown scan type: ${scan.scanType}`);
+      }
+
+      // Update scan with results
+      const updated = await storage.updateAdditionalScan(req.params.scanId, {
+        status: 'completed',
+        scanResults: scanResult,
+        score: scanResult.score,
+        recommendations: scanResult.recommendations,
+        metadata: {
+          ...scan.metadata,
+          completedAt: new Date().toISOString(),
+        },
+        completedAt: new Date(),
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("[Scans] Execute scan error:", error);
+      
+      // Update scan to failed status
+      try {
+        await storage.updateAdditionalScan(req.params.scanId, {
+          status: 'failed',
+          metadata: {
+            error: error.message,
+            failedAt: new Date().toISOString(),
+          },
+        });
+      } catch (updateError) {
+        console.error("[Scans] Failed to update scan status:", updateError);
+      }
+
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Calculate costs for a resource plan
   app.post("/api/resource-plans/:planId/calculate-costs", async (req, res) => {
     try {

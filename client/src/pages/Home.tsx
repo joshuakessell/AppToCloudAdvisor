@@ -280,38 +280,17 @@ export default function Home() {
         description: `Running ${scanType.replace('_', ' ')} analysis...`,
       });
 
-      // Create scan entry with "running" status
+      // Create scan entry with "pending" status
       const scanResult = await apiRequest("POST", `/api/games/${gameId}/scans`, {
         scanType,
-        status: "running"
+        status: "pending"
       });
 
-      // Update local state to show scan is running
+      // Update local state to show scan is pending/running
       setAdditionalScans(prev => [...prev.filter(s => s.scanType !== scanType), scanResult]);
 
-      // Simulate scan execution (placeholder - actual scan logic in next tasks)
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Update scan to completed status
-      const completedScan = await apiRequest("PATCH", `/api/games/${gameId}/scans/${scanResult.id}`, {
-        status: "completed",
-        score: 75.5, // Placeholder score
-        scanResults: {
-          summary: `${scanType} scan completed successfully`,
-          findings: [],
-        },
-        recommendations: [
-          {
-            title: "Sample Recommendation",
-            description: "This is a placeholder recommendation",
-            priority: "medium"
-          }
-        ],
-        metadata: {
-          duration: "2s",
-          timestamp: new Date().toISOString()
-        }
-      });
+      // Execute the scan via the backend
+      const completedScan = await apiRequest("POST", `/api/games/${gameId}/scans/${scanResult.id}/execute`);
 
       // Update local state with completed scan
       setAdditionalScans(prev => [...prev.filter(s => s.scanType !== scanType), completedScan]);
@@ -323,19 +302,14 @@ export default function Home() {
     } catch (error: any) {
       console.error("Scan error:", error);
       
-      // Try to update scan to failed status if it exists
+      // Refresh scans to get the failed status
       try {
-        const existingScan = additionalScans.find(s => s.scanType === scanType);
-        if (existingScan && gameId) {
-          await apiRequest("PATCH", `/api/games/${gameId}/scans/${existingScan.id}`, {
-            status: "failed",
-            metadata: {
-              error: error.message
-            }
-          });
+        if (gameId) {
+          const scans = await apiRequest("GET", `/api/games/${gameId}/scans`);
+          setAdditionalScans(scans || []);
         }
-      } catch (updateError) {
-        console.error("Failed to update scan status:", updateError);
+      } catch (refreshError) {
+        console.error("Failed to refresh scans:", refreshError);
       }
       
       toast({
